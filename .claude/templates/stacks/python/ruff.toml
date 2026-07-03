@@ -1,0 +1,19 @@
+target-version = "py312"
+line-length = 88
+extend-exclude = [".steering", "docs"]
+
+[lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # flake8-bugbear
+    "UP",       # pyupgrade
+    "SIM",      # flake8-simplify
+    "RUF",      # ruff-specific
+]
+ignore = []
+
+[format]
+quote-style = "double"
+indent-style = "space"
