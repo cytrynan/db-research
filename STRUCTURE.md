@@ -53,6 +53,9 @@
 │   │   │   ├── SKILL.md
 │   │   │   ├── guide.md
 │   │   │   └── template.md
+│   │   ├── design-tokens/
+│   │   │   ├── SKILL.md
+│   │   │   └── template.md
 │   │   ├── prd-writing/
 │   │   │   ├── SKILL.md
 │   │   │   └── template.md
@@ -154,6 +157,7 @@
 | `STRUCTURE.md` | 🔒 コア | 本ファイル。全ディレクトリ・ファイルの説明と構造図。 |
 | `LICENSE` | 📝 編集 | MIT ライセンス。`/init-project` で著者名・年が置換される。 |
 | `.gitignore` | 🛠️ 設定 | OS/エディタ系の汎用エントリのみ含む。`/init-stack` で言語固有エントリが追記される。 |
+| `DESIGN.md` | 📝 編集 | デザイン方向性・トークン・禁止事項の単一の正 (UIを持つプロジェクトのみ)。`/setup-project` ステップ7で `design-tokens` スキルにより生成 (初期は未生成)。 |
 
 ## `.devcontainer/`
 
@@ -185,7 +189,7 @@
 | `.claude/commands/init-project.md` | 🔒 コア | `/init-project`: プロジェクト名・著者・年・remote のプレースホルダーを対話で取得して一括置換。 |
 | `.claude/commands/init-extras.md` | 🔒 コア | `/init-extras`: editorconfig/CI/GitHub テンプレ等の追加ファイル群を配置。 |
 | `.claude/commands/archive-project.md` | 🔒 コア | `/archive-project`: 廃止チェックリスト (秘密情報検出・READMEバナー・.steering 移動・依存固定・タグ・`gh repo archive` 案内)。 |
-| `.claude/commands/setup-project.md` | 🔒 コア | `/setup-project`: `docs/` 配下の6つの永続ドキュメントを対話的に作成。 |
+| `.claude/commands/setup-project.md` | 🔒 コア | `/setup-project`: `docs/` 配下の6つの永続ドキュメントを対話的に作成。UIを持つプロジェクトではルート `DESIGN.md` も作成。 |
 | `.claude/commands/add-feature.md` | 🔒 コア | `/add-feature [機能名]`: ステアリングファイルを作成して計画→実装→検証のフローを実行。 |
 | `.claude/commands/review-docs.md` | 🔒 コア | `/review-docs [ファイル]`: doc-reviewer サブエージェントでドキュメント詳細レビュー。 |
 
@@ -201,6 +205,7 @@
 | repository-structure | `.claude/skills/repository-structure/SKILL.md` `guide.md` `template.md` | 🔒 コア | リポジトリ構造定義書作成スキル。 |
 | development-guidelines | `.claude/skills/development-guidelines/SKILL.md` `template.md` `guides/implementation.md` `guides/process.md` | 🔒 コア | 開発ガイドライン作成スキル。実装・プロセスの2ガイドを含む。 |
 | glossary-creation | `.claude/skills/glossary-creation/SKILL.md` `guide.md` `template.md` | 🔒 コア | ユビキタス言語 (用語集) 作成スキル。 |
+| design-tokens | `.claude/skills/design-tokens/SKILL.md` `template.md` | 🔒 コア | デザイン方向性・トークンをルート `DESIGN.md` に固定するスキル (AI slop 回避)。`/setup-project` ステップ7・UI実装前に使用。 |
 | steering | `.claude/skills/steering/SKILL.md` `templates/{requirements,design,tasklist}.md` | 🔒 コア | 作業単位のステアリングファイル管理スキル。`/add-feature` 等から内部的に呼ばれる。3つのテンプレ (要件/設計/タスクリスト) を保持。 |
 
 ### `.claude/templates/` — `/init-*` で展開するテンプレ素材
@@ -293,7 +298,7 @@
 | クローン直後 | `/init-stack` | `package.json` 等の生成、`CLAUDE.md` 技術スタック節更新、`.devcontainer` `.gitignore` 追記 |
 | 続いて | `/init-project` | `package.json`、`devcontainer.json`、`LICENSE`、`README.md` 内のプレースホルダー一括置換 |
 | 任意 | `/init-extras` | `.editorconfig`、`.env.example`、`.github/`、`CHANGELOG.md` 等を配置 |
-| 永続ドキュメント整備 | `/setup-project` | `docs/` 配下に6つのドキュメントを作成 |
+| 永続ドキュメント整備 | `/setup-project` | `docs/` 配下に6つのドキュメントを作成 + UIがあればルートに `DESIGN.md` を作成 |
 | 機能追加 | `/add-feature <機能名>` | `.steering/<日付>-<機能名>/` を作成 + 実装 |
 | 廃止時 | `/archive-project` | `README.md` バナー、`.steering/` 移動、依存固定提案 |
 
