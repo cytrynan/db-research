@@ -8,7 +8,8 @@
       "Skill(development-guidelines)",
       "Skill(glossary-creation)",
       "Skill(design-tokens)",
-      "Skill(steering)"
+      "Skill(steering)",
+      "Skill(orchestration)"
     ],
     "deny": [],
     "ask": []

@@ -23,7 +23,8 @@
 ├── .claude/                                # Claude Code 設定とコマンド一式
 │   ├── agents/                             # サブエージェント定義
 │   │   ├── doc-reviewer.md
-│   │   └── implementation-validator.md
+│   │   ├── implementation-validator.md
+│   │   └── orchestrator-reviewer.md
 │   ├── commands/                           # スラッシュコマンド (.md ファイル)
 │   │   ├── add-feature.md
 │   │   ├── archive-project.md
@@ -44,7 +45,8 @@
 │   │   │   ├── template.md
 │   │   │   └── guides/
 │   │   │       ├── implementation.md
-│   │   │       └── process.md
+│   │   │       ├── process.md
+│   │   │       └── verification.md
 │   │   ├── functional-design/
 │   │   │   ├── SKILL.md
 │   │   │   ├── guide.md
@@ -56,6 +58,10 @@
 │   │   ├── design-tokens/
 │   │   │   ├── SKILL.md
 │   │   │   └── template.md
+│   │   ├── orchestration/
+│   │   │   ├── SKILL.md
+│   │   │   └── templates/
+│   │   │       └── orchestration.md
 │   │   ├── prd-writing/
 │   │   │   ├── SKILL.md
 │   │   │   └── template.md
@@ -179,7 +185,8 @@
 | パス | ラベル | 説明 |
 |---|---|---|
 | `.claude/agents/doc-reviewer.md` | 🔒 コア | ドキュメントの詳細レビュー用サブエージェント。`/review-docs` から呼ばれる。 |
-| `.claude/agents/implementation-validator.md` | 🔒 コア | 実装の品質・スペック整合性を検証するサブエージェント。 |
+| `.claude/agents/implementation-validator.md` | 🔒 コア | 実装の品質・スペック整合性を検証するサブエージェント。品質ゲートを**再実行**して報告する（第2層）。 |
+| `.claude/agents/orchestrator-reviewer.md` | 🔒 コア | **司令塔の采配そのもの**（分解・割り振り・編成数・差し戻し・受入検証）を評価するサブエージェント。エージェント体制を組んだ作業では毎回1体立てる。 |
 
 ### `.claude/commands/` — スラッシュコマンド
 
@@ -203,10 +210,11 @@
 | functional-design | `.claude/skills/functional-design/SKILL.md` `guide.md` `template.md` | 🔒 コア | 機能設計書作成スキル。 |
 | architecture-design | `.claude/skills/architecture-design/SKILL.md` `guide.md` `template.md` | 🔒 コア | アーキテクチャ設計書作成スキル。 |
 | repository-structure | `.claude/skills/repository-structure/SKILL.md` `guide.md` `template.md` | 🔒 コア | リポジトリ構造定義書作成スキル。 |
-| development-guidelines | `.claude/skills/development-guidelines/SKILL.md` `template.md` `guides/implementation.md` `guides/process.md` | 🔒 コア | 開発ガイドライン作成スキル。実装・プロセスの2ガイドを含む。 |
+| development-guidelines | `.claude/skills/development-guidelines/SKILL.md` `template.md` `guides/implementation.md` `guides/process.md` `guides/verification.md` | 🔒 コア | 開発ガイドライン作成スキル。実装・プロセス・検証の3ガイドを含む。`guides/verification.md` は外部連携/無人実行の検証設計（証跡・ground truth・完了判定）。 |
 | glossary-creation | `.claude/skills/glossary-creation/SKILL.md` `guide.md` `template.md` | 🔒 コア | ユビキタス言語 (用語集) 作成スキル。 |
 | design-tokens | `.claude/skills/design-tokens/SKILL.md` `template.md` | 🔒 コア | デザイン方向性・トークンをルート `DESIGN.md` に固定するスキル (AI slop 回避)。`/setup-project` ステップ7・UI実装前に使用。 |
 | steering | `.claude/skills/steering/SKILL.md` `templates/{requirements,design,tasklist}.md` | 🔒 コア | 作業単位のステアリングファイル管理スキル。`/add-feature` 等から内部的に呼ばれる。3つのテンプレ (要件/設計/タスクリスト) を保持。 |
+| orchestration | `.claude/skills/orchestration/SKILL.md` `templates/orchestration.md` | 🔒 コア | **司令塔の運用の正本**。編成の判断 / 委任の設計 / 受入検証 (3層ゲート) / 采配の記録の4モード。`/add-feature` ステップ3.5 で呼ばれる。 |
 
 ### `.claude/templates/` — `/init-*` で展開するテンプレ素材
 
@@ -273,7 +281,8 @@
 | `.steering/.gitkeep` | 🔒 コア | ディレクトリ保持用の空ファイル。 |
 | `.steering/<YYYYMMDD>-<task-name>/requirements.md` | 📦 自動生成 | 作業の要求内容。`/add-feature` 等で自動生成。 |
 | `.steering/<YYYYMMDD>-<task-name>/design.md` | 📦 自動生成 | 作業の実装アプローチ。 |
-| `.steering/<YYYYMMDD>-<task-name>/tasklist.md` | 📦 自動生成 | タスクリスト + 振り返り。 |
+| `.steering/<YYYYMMDD>-<task-name>/tasklist.md` | 📦 自動生成 | タスクリスト + 振り返り (止まった点の記録が必須)。 |
+| `.steering/<YYYYMMDD>-<task-name>/orchestration.md` | 📦 自動生成 | 采配の記録。**エージェント体制を組んだ場合のみ**作成 (司令塔単独処理では作らない)。 |
 
 `.steering/*` はデフォルトで `.gitignore` 対象だが、必要に応じてコミットすることも可能。
 
@@ -299,7 +308,7 @@
 | 続いて | `/init-project` | `package.json`、`devcontainer.json`、`LICENSE`、`README.md` 内のプレースホルダー一括置換 |
 | 任意 | `/init-extras` | `.editorconfig`、`.env.example`、`.github/`、`CHANGELOG.md` 等を配置 |
 | 永続ドキュメント整備 | `/setup-project` | `docs/` 配下に6つのドキュメントを作成 + UIがあればルートに `DESIGN.md` を作成 |
-| 機能追加 | `/add-feature <機能名>` | `.steering/<日付>-<機能名>/` を作成 + 実装 |
+| 機能追加 | `/add-feature <機能名>` | `.steering/<日付>-<機能名>/` を作成 + 体制判断 + 実装 + 3層の品質ゲート + 采配の記録 |
 | 廃止時 | `/archive-project` | `README.md` バナー、`.steering/` 移動、依存固定提案 |
 
 ## プレースホルダー一覧
