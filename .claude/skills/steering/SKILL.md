@@ -78,6 +78,10 @@ allowed-tools: Read, Write, Edit, TodoWrite, Bash
    | 親issue | タイトル `[tracking] <YYYYMMDD>-<タスク名>` / ラベル `tracking` と `task/<YYYYMMDD>-<タスク名>` / 本文に目的1〜3行・`.steering/` 配下へのパス・子issueのチェックリスト |
    | 子issue | タイトルはタスク名そのまま（連番は付けない。並び替えで破綻する） / ラベル `task/<YYYYMMDD>-<タスク名>` / 本文に**受入条件**・対象ファイル・`design.md` の該当節・`Part of #<親>` |
 
+   **実行は `tasklist-to-issues` スキルに任せる**（手作業で `gh` を並べない）:
+   `.claude/skills/tasklist-to-issues/scripts/new-issues-from-tasklist.ps1 -TasklistPath <tasklist.md> -DryRun` で確認 → `-DryRun` を外して本実行。
+   PowerShell が使えない環境では以下を手作業で行う。
+
    手順:
    1. `gh repo view` で GitHub リモートの有無を確認する。**通らなければ起票をスキップし、その旨を1行報告して tasklist.md だけで進める**（黙って飛ばさない）
    2. ラベルを一度だけ作る: `gh label create "task/<YYYYMMDD>-<タスク名>"`（`tracking` / `in-progress` も無ければ作る）。**ラベルが存在しないと `--label` は失敗する**
@@ -123,6 +127,12 @@ tasklist.mdに従って実装を進め、**進捗を確実にドキュメント�
 | `- [x] ~~タスク名~~（理由）` スキップ | `gh issue close <N> --reason "not planned" --comment "<技術的理由>"` |
 
 **issue → tasklist の取り込み**（セッション開始時・ユーザーから指示を受けた時に一度実行）:
+
+```
+.claude/skills/tasklist-to-issues/scripts/check-tasklist-issues.ps1 -TasklistPath <tasklist.md>
+```
+
+PowerShell が使えない環境では次を直接読んで突き合わせる:
 
 ```
 gh issue list --label "task/<YYYYMMDD>-<タスク名>" --state all --json number,title,state,stateReason,assignees,labels

@@ -214,6 +214,7 @@
 | glossary-creation | `.claude/skills/glossary-creation/SKILL.md` `guide.md` `template.md` | 🔒 コア | ユビキタス言語 (用語集) 作成スキル。 |
 | design-tokens | `.claude/skills/design-tokens/SKILL.md` `template.md` | 🔒 コア | デザイン方向性・トークンをルート `DESIGN.md` に固定するスキル (AI slop 回避)。`/setup-project` ステップ7・UI実装前に使用。 |
 | steering | `.claude/skills/steering/SKILL.md` `templates/{requirements,design,tasklist}.md` | 🔒 コア | 作業単位のステアリングファイル管理スキル。`/add-feature` 等から内部的に呼ばれる。3つのテンプレ (要件/設計/タスクリスト) を保持。 |
+| tasklist-to-issues | `.claude/skills/tasklist-to-issues/SKILL.md` `scripts/{new-issues-from-tasklist,check-tasklist-issues}.ps1` | 🔒 コア | `tasklist.md` から GitHub issue (親1件＋子N件) を一括起票し番号を書き戻す／issue との食い違いを検出。実装着手前に使用。スクリプトは PowerShell (UTF-8 BOM付きで保持すること)。 |
 | orchestration | `.claude/skills/orchestration/SKILL.md` `templates/orchestration.md` | 🔒 コア | **司令塔の運用の正本**。編成の判断 / 委任の設計 / 受入検証 (3層ゲート) / 采配の記録の4モード。`/add-feature` ステップ3.5 で呼ばれる。 |
 
 ### `.claude/templates/` — `/init-*` で展開するテンプレ素材

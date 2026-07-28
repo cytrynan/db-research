@@ -4,6 +4,47 @@ Claude Code を使ったスペック駆動開発のための **言語非依存�
 
 クローン後、対話的なスラッシュコマンドで技術スタック・プロジェクト情報を初期化し、開発を開始できます。
 
+---
+
+## 要点（まずここだけ）
+
+**1. これは何か** — 「思いつきで書き始めない」ための足場。仕様を先に文書化し、作業単位ごとに計画を切り、
+サブエージェントに委任して、最後に司令塔が自分で検証する。その型（ドキュメント構成・スキル・エージェント定義）を一式で持ち込む。
+
+**2. 始め方（この順に4つ）**
+
+```
+/init-stack      → 技術スタックを選んで設定ファイル一式を生成
+/init-project    → プロジェクト名・著者・remote を設定
+/setup-project   → docs/ の永続ドキュメント6本を作成
+/add-feature X   → 機能を実装（計画 → 実装 → 検証）
+```
+
+**3. ドキュメントは2層** — 混ぜない。
+
+| 層 | 場所 | 役割 |
+|---|---|---|
+| 恒久仕様 | `docs/`（UIがあればルートの `DESIGN.md`） | 「何を作るか」。頻繁に変わらない北極星 |
+| 作業単位 | `.steering/<YYYYMMDD>-<タスク名>/` | 「今回何をするか」。requirements / design / tasklist。作業ごとに新規作成し履歴として残す |
+
+**4. 進捗は tasklist.md と GitHub issue の二本立て** — `tasklist.md` を作ったら**実装着手前に**issueへ起票する
+（親1件＋子N件）。以後、着手・完了のたびに両方をその場で更新する。
+これで「Claude Code に次のタスクを聞く」「issue を見て `#12 やって` と指示する」の**どちらでも同じ作業に入れる**。
+→ 詳細は後述の「タスク管理」節
+
+**5. 守る運用は3つ**
+
+- **司令塔＋役割別エージェント** — メインセッションは管理・統合・最終判断に徹し、実作業は委任する（基本2〜4体）
+- **自己申告を信頼しない（3層ゲート）** — 実装係 → レビュー係が再実行 → 司令塔がもう一度実行
+- **記録はその都度・具体例と抽象化のセットで・失敗を必ず1件** — 薄い振り返りは書かないより悪い
+
+**6. 迷ったら** — 普通に会話で依頼すれば Claude Code が適切なスキルを選ぶ。運用の正本は
+`CLAUDE.md`（規範）、`steering` スキル（作業単位の進め方）、`orchestration` スキル（委任と検証）。
+
+---
+
+以下は詳細です。必要な時に読んでください。
+
 ## 含まれるもの
 
 ### 対応技術スタック
@@ -42,6 +83,7 @@ Claude Code を使ったスペック駆動開発のための **言語非依存�
 | スキル | 説明 |
 |---|---|
 | `steering` | 作業計画・実装・振り返りの管理 |
+| `tasklist-to-issues` | tasklist.md から GitHub issue を一括起票し、issue との食い違いを検出 |
 | `orchestration` | 司令塔としての編成判断・委任の設計・受入検証・采配の記録 |
 | `prd-writing` | プロダクト要求定義書の作成 |
 | `functional-design` | 機能設計書の作成 |
@@ -167,6 +209,56 @@ cargo fetch
 ```
 
 ステアリングファイル (`.steering/`) を作成して、計画 → 実装 → 検証を進めます。計画生成後に一度だけ承認を挟み、承認後は実装〜検証を自動で完走します。
+
+## タスク管理
+
+`tasklist.md`（リポジトリ内のファイル）と GitHub issue を**同じ内容の二本立て**で持ちます。
+
+- **ファイル側**（`.steering/<unit>/tasklist.md`）— 設計と受入条件の正本。実装エージェントがこれを読む
+- **issue 側** — 人間の操作面。一覧で眺める・追加する・閉じる・`#12 やって` と番号で指示する
+
+### 起票（実装着手前に必ず）
+
+`tasklist.md` が固まったら `tasklist-to-issues` スキルで起票します。
+
+```powershell
+# 対象を確認（変更しない）
+.\.claude\skills\tasklist-to-issues\scripts\new-issues-from-tasklist.ps1 -TasklistPath ".steering\20260728-機能名\tasklist.md" -DryRun
+
+# 起票して tasklist.md に番号を書き戻す
+.\.claude\skills\tasklist-to-issues\scripts\new-issues-from-tasklist.ps1 -TasklistPath ".steering\20260728-機能名\tasklist.md"
+```
+
+| | 内容 |
+|---|---|
+| 親issue | `[tracking] <YYYYMMDD>-<タスク名>` / ラベル `tracking` + `task/<unit>` / 本文に子issueのチェックリスト |
+| 子issue | タイトルはタスク名 / ラベル `task/<unit>` / 本文に受入条件・対象ファイル・`Part of #<親>` |
+| 対応付け | `tasklist.md` の先頭 `tracking: #<親>` と各行末の ` (#<子>)`。**この行が対応表**（別ファイルを作らない） |
+
+再実行しても二重起票しません（既に番号が付いた行・スキップ済み・コードフェンス内は対象外）。
+子issueが10件を超えると停止します（issue 一覧が読めなくなると本来の目的を壊すため、タスクを階層化する）。
+
+### 実装中の同期（その場で・まとめない）
+
+| tasklist.md | issue |
+|---|---|
+| `- [ ]` 未着手 | open / assignee なし |
+| `- [~]` 着手中 | open / assignee = 自分 / ラベル `in-progress` |
+| `- [x]` 完了 | closed ＋ 何を変えたか1〜3行のコメント |
+| `- [x] ~~名~~（理由）` スキップ | closed as **not planned** ＋ 理由コメント |
+
+### issue 側の変更を取り込む
+
+セッション開始時・指示を受けた時に食い違いを確認します。
+
+```powershell
+.\.claude\skills\tasklist-to-issues\scripts\check-tasklist-issues.ps1 -TasklistPath ".steering\20260728-機能名\tasklist.md"
+```
+
+issue にしか無いタスクは追記し、closed なら `[x]` にし、**issue が open なのに `[x]` の食い違いは勝手に直さずユーザーに確認**します。
+状態（open/closed・タスクの増減）は issue を上流とみなし、設計と受入条件の正本は `.steering/` に置く、という分担です。
+
+> GitHub リモートが無い / `gh` が未認証のリポジトリでは起票をスキップし、その旨を報告して `tasklist.md` だけで進めます（黙って飛ばしません）。
 
 ## 開発の進め方 (司令塔方式)
 
