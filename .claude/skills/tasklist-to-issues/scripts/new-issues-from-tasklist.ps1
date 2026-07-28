@@ -21,6 +21,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$TasklistPath,
     [string]$Repo,
+    [string]$Label,
     [switch]$DryRun,
     [int]$MaxTasks = 10,
     [switch]$Force
@@ -67,7 +68,18 @@ $unit = Split-Path -Leaf $unitDir
 if ($unit -notmatch '^\d{8}-') {
     Write-Warning "作業単位名が '<YYYYMMDD>-<タスク名>' 形式ではありません: $unit"
 }
-$label = "task/$unit"
+# GitHub のラベル名は 50 文字が上限。超えると label create が HTTP 422 で落ちる。
+# -Label で明示指定されていればそれを使い、無ければ作業単位名から作って必要なら詰める。
+if ($Label) {
+    $label = $Label
+} else {
+    $label = "task/$unit"
+}
+if ($label.Length -gt 50) {
+    $shortened = $label.Substring(0, 50).TrimEnd('-', '.', '/')
+    Write-Warning "ラベル名が 50 文字を超えるため短縮します: $label -> $shortened"
+    $label = $shortened
+}
 
 # リモートの存在確認（通らなければ起票しない）
 # 注: gh repo view はリポジトリを位置引数で取る（--repo は無い）ため Invoke-Gh は使わない

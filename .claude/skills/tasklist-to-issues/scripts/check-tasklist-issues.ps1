@@ -16,7 +16,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$TasklistPath,
-    [string]$Repo
+    [string]$Repo,
+    [string]$Label
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,7 +35,10 @@ if (-not (Test-Path -LiteralPath $TasklistPath)) { throw "tasklist が見つか�
 $tasklistFull = (Resolve-Path -LiteralPath $TasklistPath).Path
 $unitDir = Split-Path -Parent $tasklistFull
 $unit = Split-Path -Leaf $unitDir
-$label = "task/$unit"
+# new-issues-from-tasklist.ps1 と同じ規則でラベル名を決める
+# （GitHub のラベル名上限 50 文字。超える場合は起票側が詰めているのでここでも同じ詰め方をする）
+if ($Label) { $label = $Label } else { $label = "task/$unit" }
+if ($label.Length -gt 50) { $label = $label.Substring(0, 50).TrimEnd('-', '.', '/') }
 
 # --- tasklist 側 ---
 $lines = [System.IO.File]::ReadAllLines($tasklistFull, [System.Text.Encoding]::UTF8)

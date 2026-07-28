@@ -43,6 +43,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 1. `gh repo view` でリモートを確認（**通らなければ何もせず終了** → 起票をスキップした旨を1行報告して tasklist.md だけで進める）
 2. ラベル `task/<unit>` / `tracking` / `in-progress` を無ければ作成（**ラベルが無いと `--label` は失敗する**）
+   - **GitHub のラベル名は 50 文字が上限**。`task/<YYYYMMDD>-<長いタスク名>` は簡単に超え、
+     超えると `gh label create` が `HTTP 422: Validation Failed` で落ちる（本文に文字数の話は出ない）。
+     50 文字に詰めて警告を出す。`-Label` で明示指定も可。突合側も同じ詰め方をする
 3. 親issue `[tracking] <unit>` を作成（`requirements.md` の先頭行を目的として引用）
 4. トップレベルのタスク行ごとに子issueを作成（サブタスクを**受入条件**として本文に展開、`Part of #<親>`）
 5. `tasklist.md` に `tracking: #<親>` と各行末の ` (#<子>)` を書き戻す
