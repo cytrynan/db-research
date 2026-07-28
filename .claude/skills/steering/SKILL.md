@@ -1,7 +1,7 @@
 ---
 name: steering
 description: 作業指示毎の作業計画、タスクリストをドキュメントに記録するためのスキル。ユーザーからの指示をトリガーとした作業計画時、実装時、検証時に読み込む。
-allowed-tools: Read, Write, Edit, TodoWrite
+allowed-tools: Read, Write, Edit, TodoWrite, Bash
 ---
 
 # Steering スキル
@@ -66,6 +66,26 @@ allowed-tools: Read, Write, Edit, TodoWrite
    - サブタスクも明確に
    - 実装の順序を明記
 
+5. **GitHub issue に起票する（実装着手前・必須）**
+
+   `tasklist.md` が固まったら、**実装に入る前に**タスクを GitHub issue へ起票する。
+   ユーザーが「Claude Code に聞いて指示する」「issue を見て指示する」の**どちらからでも同じ作業に入れる**ようにするため。
+
+   起票の形（作業単位ごとに 親1件 + 子N件）:
+
+   | | 内容 |
+   |---|---|
+   | 親issue | タイトル `[tracking] <YYYYMMDD>-<タスク名>` / ラベル `tracking` と `task/<YYYYMMDD>-<タスク名>` / 本文に目的1〜3行・`.steering/` 配下へのパス・子issueのチェックリスト |
+   | 子issue | タイトルはタスク名そのまま（連番は付けない。並び替えで破綻する） / ラベル `task/<YYYYMMDD>-<タスク名>` / 本文に**受入条件**・対象ファイル・`design.md` の該当節・`Part of #<親>` |
+
+   手順:
+   1. `gh repo view` で GitHub リモートの有無を確認する。**通らなければ起票をスキップし、その旨を1行報告して tasklist.md だけで進める**（黙って飛ばさない）
+   2. ラベルを一度だけ作る: `gh label create "task/<YYYYMMDD>-<タスク名>"`（`tracking` / `in-progress` も無ければ作る）。**ラベルが存在しないと `--label` は失敗する**
+   3. 親 → 子の順に `gh issue create --title "..." --label "..." --body-file <一時ファイル>` で起票する。
+      **本文は `--body` にインラインで書かず必ず `--body-file`**（改行・日本語のクォート事故を避ける）。一時ファイルはリポジトリに残さない
+   4. `tasklist.md` に issue 番号を書き戻す（先頭に `tracking: #<親>`、各行末に `(#<子>)`）。**これが対応表**。対応表を別ファイルにしない
+   5. 子issueが**10件を超えるならタスクを階層化**し、親タスク単位で子issueを立てる（細切れの大量起票は issue 一覧を読めなくし、目的を壊す）
+
 ## モード2: 実装（最重要）
 
 ### 目的
@@ -77,6 +97,7 @@ tasklist.mdに従って実装を進め、**進捗を確実にドキュメント�
 - tasklist.mdを常に開いた状態で実装
 - タスク着手時に必ずEditツールで`[ ]`→`[~]`（着手中）に更新
 - タスク完了時に必ずEditツールで`[~]`→`[x]`（完了）に更新
+- **対応する GitHub issue も同じタイミングで更新する**（下記「issueとの同期」）
 - **tasklist.mdの全タスクが完了するまで作業を継続する**
 - NEVER: tasklist.mdを更新せずに次のタスクに進まない
 
@@ -90,10 +111,35 @@ tasklist.mdに従って実装を進め、**進捗を確実にドキュメント�
 | `- [~]` | 着手中（いま作業しているタスク。常に1つだけになるのが理想） |
 | `- [x]` | 完了 |
 
+### issueとの同期（2026-07-28 追加）
+
+`tasklist.md` の状態と GitHub issue を**その場で**一致させる。まとめて後で同期しない。
+
+| tasklist.md | issue |
+|---|---|
+| `- [ ]` 未着手 | open / assignee なし |
+| `- [~]` 着手中 | open / assignee = 自分 / ラベル `in-progress`（`gh issue edit <N> --add-label in-progress --add-assignee @me`） |
+| `- [x]` 完了 | closed（`gh issue close <N> --comment "<何を変えたか1〜3行>"`） |
+| `- [x] ~~タスク名~~（理由）` スキップ | `gh issue close <N> --reason "not planned" --comment "<技術的理由>"` |
+
+**issue → tasklist の取り込み**（セッション開始時・ユーザーから指示を受けた時に一度実行）:
+
+```
+gh issue list --label "task/<YYYYMMDD>-<タスク名>" --state all --json number,title,state,stateReason,assignees,labels
+```
+
+- **issue にあって tasklist に無い** → ユーザーが追加したタスク。`- [ ] タイトル (#NN)` を tasklist に追記して着手対象に含める
+- **issue が closed / tasklist が `[ ]`** → 完了扱いにして tasklist を `[x]` にする（勝手に再実施しない）
+- **issue が open / tasklist が `[x]`** → 差し戻しの可能性。**どちらも勝手に上書きせずユーザーに確認する**
+- **issue 本文の受入条件が編集されていた** → issue 側を採用し、tasklist / design.md に反映する
+
+**「#12 やって」と番号で指示された場合**: `gh issue view 12 --json title,body,labels` → ラベル `task/<...>` から作業単位ディレクトリを特定 → **`tasklist.md` と `design.md` を読んでから**着手する。issue 本文だけを頼りに実装しない（issue は要約であり設計の正本ではない）。
+
 **NEVER（禁止）**:
 - tasklist.mdを見ずに実装を進める
 - TodoWriteツールだけで進捗管理する（TodoWriteは補助、tasklist.mdが正式）
 - 複数タスクをまとめて更新する（リアルタイムに更新する）
+- tasklist.mdだけ更新して issue を放置する（ユーザーが issue 側を見て判断できなくなる）
 - **「時間の都合により」「別タスクとして実施予定」などの理由でタスクをスキップする**
 - **未完了タスク（`[ ]`）を残したまま作業を終了する**
 
