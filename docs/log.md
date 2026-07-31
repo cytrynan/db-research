@@ -1,0 +1,10 @@
+# docs 更新ログ
+
+> ドキュメント記録規約（OKF準拠。正本: `development-guidelines` スキルの `guides/recording.md`）。
+> `docs/` 配下のドキュメントを作成・更新・廃止したら、同じ作業内でここに1行追記する。新しい順。
+> 書式: `* **Creation|Update|Deprecation**: [タイトル](ファイル名.md) — 何をどう変えたか (アクター)`
+
+<!-- /setup-project でドキュメントを作成したら、最初のエントリをここに追記してください。例:
+## 2026-08-01
+* **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
+-->

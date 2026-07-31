@@ -46,7 +46,8 @@
 │   │   │   └── guides/
 │   │   │       ├── implementation.md
 │   │   │       ├── process.md
-│   │   │       └── verification.md
+│   │   │       ├── verification.md
+│   │   │       └── recording.md
 │   │   ├── functional-design/
 │   │   │   ├── SKILL.md
 │   │   │   ├── guide.md
@@ -148,6 +149,7 @@
 ├── README.md                               # テンプレートの利用方法
 ├── STRUCTURE.md                            # 本ファイル (構造リファレンス)
 └── docs/
+    ├── log.md                              # docs/ の変更履歴 (OKF準拠記録規約)
     └── ideas/                              # 壁打ち・アイデアメモ用 (/setup-project の入力)
         └── initial-requirements.md
 ```
@@ -210,7 +212,7 @@
 | functional-design | `.claude/skills/functional-design/SKILL.md` `guide.md` `template.md` | 🔒 コア | 機能設計書作成スキル。 |
 | architecture-design | `.claude/skills/architecture-design/SKILL.md` `guide.md` `template.md` | 🔒 コア | アーキテクチャ設計書作成スキル。 |
 | repository-structure | `.claude/skills/repository-structure/SKILL.md` `guide.md` `template.md` | 🔒 コア | リポジトリ構造定義書作成スキル。 |
-| development-guidelines | `.claude/skills/development-guidelines/SKILL.md` `template.md` `guides/implementation.md` `guides/process.md` `guides/verification.md` | 🔒 コア | 開発ガイドライン作成スキル。実装・プロセス・検証の3ガイドを含む。`guides/verification.md` は外部連携/無人実行の検証設計（証跡・ground truth・完了判定）。 |
+| development-guidelines | `.claude/skills/development-guidelines/SKILL.md` `template.md` `guides/implementation.md` `guides/process.md` `guides/verification.md` `guides/recording.md` | 🔒 コア | 開発ガイドライン作成スキル。実装・プロセス・検証・記録の4ガイドを含む。`guides/verification.md` は外部連携/無人実行の検証設計（証跡・ground truth・完了判定）。`guides/recording.md` はOKF準拠のドキュメント記録規約（フロントマター・docs/log.md・アクター規約）。 |
 | glossary-creation | `.claude/skills/glossary-creation/SKILL.md` `guide.md` `template.md` | 🔒 コア | ユビキタス言語 (用語集) 作成スキル。 |
 | design-tokens | `.claude/skills/design-tokens/SKILL.md` `template.md` | 🔒 コア | デザイン方向性・トークンをルート `DESIGN.md` に固定するスキル (AI slop 回避)。`/setup-project` ステップ7・UI実装前に使用。 |
 | steering | `.claude/skills/steering/SKILL.md` `templates/{requirements,design,tasklist}.md` | 🔒 コア | 作業単位のステアリングファイル管理スキル。`/add-feature` 等から内部的に呼ばれる。3つのテンプレ (要件/設計/タスクリスト) を保持。 |
@@ -292,6 +294,7 @@
 | パス | ラベル | 説明 |
 |---|---|---|
 | `docs/ideas/initial-requirements.md` | 📝 編集 | 壁打ち・初期アイデアメモ。`/setup-project` 実行時に PRD の入力として読み込まれる。 |
+| `docs/log.md` | 📝 編集 | `docs/` の変更履歴（OKF準拠記録規約）。ドキュメントの作成・更新のたびに1行追記する。正本は `development-guidelines` スキルの `guides/recording.md`。 |
 | `docs/product-requirements.md` | 📝 編集 | `/setup-project` ステップ1で作成される PRD (初期は未生成)。 |
 | `docs/functional-design.md` | 📝 編集 | 同ステップ2で作成 (初期は未生成)。 |
 | `docs/architecture.md` | 📝 編集 | 同ステップ3で作成 (初期は未生成)。 |

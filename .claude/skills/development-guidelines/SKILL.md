@@ -6,10 +6,11 @@ allowed-tools: Read, Write, Edit
 
 # 開発ガイドラインスキル
 
-チーム開発に必要な3つの要素をカバーします:
+チーム開発に必要な4つの要素をカバーします:
 1. 実装時のコーディング規約 (guides/implementation.md)
 2. 開発プロセスの標準化 (guides/process.md)
 3. 検証の設計（外部連携・無人実行の証跡と完了判定）(guides/verification.md)
+4. ドキュメント記録規約（OKF準拠のフロントマター・log.md・アクター規約）(guides/recording.md)
 
 ## 前提条件
 
@@ -83,6 +84,14 @@ Git運用、テスト戦略、コードレビュー: ./guides/process.md
 - 資格情報をスクリプトに持たせない（`--assist` 方式・待ち合わせファイル）
 - 無人実行の完了判定（3条件のAND）と権限の前渡し
 
+### ドキュメントの作成・更新時（`docs/` 恒久ドキュメント）
+鮮度・信頼のフロントマターと変更履歴: ./guides/recording.md
+
+含まれる内容:
+- フロントマター仕様（`type` 必須・`generated`・`verified`・`stale_after`・`status`）
+- `docs/log.md` への変更履歴の追記形式
+- アクター規約（`human:<id>` / `<producer>/<モデルID>` / `process:<id>`）と信頼3段階の判定
+
 ### テンプレート
 開発ガイドライン作成時: ./template.md
 
@@ -105,6 +114,10 @@ Git運用、テスト戦略、コードレビュー: ./guides/process.md
 ### 外部サービス連携の実装・検証時
 - ./guides/verification.md の原則1〜6（証跡・ground truth・fail の分離）
 - UIの表示だけで成否を判定していないか確認
+
+### `docs/` のドキュメントを作成・更新する時
+- ./guides/recording.md のフロントマター仕様（承認を得たら `verified` を付け、実質変更したら外す）
+- 同じ作業内で `docs/log.md` に1行追記
 
 ### リリース準備時
 - ./guides/process.md の「Git運用ルール」（main へのマージ方針）
