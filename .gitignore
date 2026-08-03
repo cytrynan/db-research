@@ -31,4 +31,10 @@ build/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Claude Code のエージェント作業ツリー（リポジトリの完全な複製・依存を入れると1つ数百MB）
+# 追跡すると GB 単位の untracked が出続け、Docker のビルドコンテキストにも紛れ込む。
+# 併せて .dockerignore にも `.claude` を入れること（.dockerignore の
+# パターンはルート直下にしか一致しないため `node_modules` だけでは落ちない）。
+.claude/worktrees/
+
 # ↓ /init-stack 実行で言語固有のエントリがここに追記されます
