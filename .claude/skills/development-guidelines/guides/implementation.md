@@ -304,6 +304,92 @@ async function fetchMultipleUsers(ids: string[]): Promise<User[]> {
 }
 ```
 
+## データベース操作（トランザクション・冪等性・マイグレーション）
+
+### 副作用をトランザクションの外に置かない
+
+「トランザクションでコミット → その後に監査ログ・通知を書く」は広く見かける形だが、
+**後段が失敗すると、業務データは作成済みなのに呼び出し元へエラーを返す**。
+再送するクライアント（モバイル・リトライ付きジョブ）と組み合わさると、そのまま重複データになる。
+
+```typescript
+// ❌ 悪い例: コミット後に監査ログ。ここで落ちると「作成済みなのに失敗」を返す
+const id = await db.$transaction(async (tx) => { /* 作成 */ });
+await writeAuditLog(userId, "CREATED", id);   // ← 失敗すると呼び出し元は失敗扱い
+return { ok: true, id };
+
+// ✅ 良い例: 1件登録のような軽い処理なら監査ログもトランザクション内に入れる
+const id = await db.$transaction(async (tx) => {
+  /* 作成 */
+  await writeAuditLog(userId, "CREATED", id, tx);   // tx を渡す
+  return id;
+});
+```
+
+ログ関数側は**トランザクションクライアントを省略可能な引数**で受けると、既存の呼び出しを壊さずに済む:
+
+```typescript
+type Db = PrismaClient | Prisma.TransactionClient;
+export async function writeAuditLog(/* … */, client: Db = db) { /* … */ }
+```
+
+### 再送されうる登録には冪等キーを置き、重複は「成功」で返す
+
+自然キー（シリアル番号・注文番号など）がある経路は一意制約が事実上の防波堤になるが、
+**自然キーが無い経路には防波堤がゼロ**になる。「既存の登録処理と同じ構造だから安全」という
+推論はここで破れるので、**自然キーの有無を必ず確認する**。
+
+```typescript
+// ✅ クライアントが採番したキーに unique を張り、重複は成功として既存 ID を返す
+const existing = await db.record.findUnique({ where: { clientKey }, select: { id: true } });
+if (existing) return { ok: true, id: existing.id };   // 副作用は作らない
+try {
+  /* 作成 */
+} catch (e) {
+  if (isUniqueViolation(e, "clientKey")) {            // 同時実行で擦り抜けた場合
+    const found = await db.record.findUnique({ where: { clientKey }, select: { id: true } });
+    if (found) return { ok: true, id: found.id };
+  }
+  throw e;
+}
+```
+
+- **重複をエラーで返すと再送ループになる**（クライアントは失敗として扱い、送り続ける）
+- 冪等ヒット時は**副作用（在庫の増減・監査ログ・通知）を作らない**。作ると数字が二重に動く
+- キーは**処理を開始した瞬間に採番し、再送時に採番し直さない**。採番し直すと冪等キーが機能しない
+  （クライアント側の実装者に必ず伝える。設計書に書かないと確実に漏れる）
+
+### 一意制約違反のエラー形は推測せず実測する
+
+ORM が返すエラーの `target` 等の形はバージョン・コネクタで変わる。
+実測（Prisma 5.22 / PostgreSQL）では `code = "P2002"` / `meta.target = ["clientKey"]` と
+**フィールド名の配列**で返り、インデックス名ではなかった。
+
+**実 DB に一意制約違反を1回起こして確認する**（数分で終わる）。外すと
+「重複時だけ想定と違う分岐に落ちる」という、通常のテストで気づきにくい壊れ方をする。
+判定は文字列・配列の**両方を受ける**形にしておく。
+
+### マイグレーションを無人（非対話）で作る
+
+エージェントの実行環境には TTY が無いため、**対話前提のマイグレーションコマンドは実行できない**
+（Prisma の `prisma migrate dev` は `--name` を付けても
+`environment is non-interactive, which is not supported` で拒否される）。
+
+対処は**同じツールが持つ非対話の経路**を使うこと。Prisma なら差分 SQL を生成 → 適用に分ける:
+
+```bash
+# 生成（migrate diff は公式の SQL 生成器。手書きにはならない）
+prisma migrate diff --from-schema-datasource <schema> --to-schema-datamodel <schema> --script \
+  > "prisma/migrations/$(date -u +%Y%m%d%H%M%S)_<説明>/migration.sql"
+# 適用・確認
+prisma migrate deploy && prisma migrate status
+```
+
+- ディレクトリ名のタイムスタンプは **UTC**（ローカル時刻だと既存の並びと逆転しうる）
+- 生成した SQL は**ファイルに書き出したら必ず中身を目視**する（更新通知バナー等が混ざることがある）
+- **`NOT NULL` カラムの追加前に、対象テーブルの実行数を数える**。0 件であることを根拠にしてから
+  必須にする。0 件でないなら勝手に消さず、nullable にするか既定値を与えるかを依頼者に確認する
+
 ## コメント規約
 
 ### ドキュメントコメント
