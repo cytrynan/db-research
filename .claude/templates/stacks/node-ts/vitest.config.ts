@@ -15,6 +15,9 @@ export default defineConfig({
         'node_modules/**',
         'dist/**',
         '.steering/**',
+        // テンプレ素材（`.claude/templates/stacks/*` の雛形ソース）はプロジェクトのコードではない。
+        // 除外しないとカバレッジの分母に入り、閾値が実力と無関係に割れる（2026-08-08 実測: 97% → 80.4%）。
+        '.claude/**',
         '**/*.config.{ts,js}',
         '**/types/**',
       ],

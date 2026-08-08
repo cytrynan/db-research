@@ -1,3 +1,23 @@
+# Dependabot の運用メモ（2026-08-08 実測に基づく）
+#
+# 1. **グループ更新は「片側だけ上げてピア非互換を作る」ことがある。**
+#    dev-dependencies グループが typescript を上げても typescript-eslint は
+#    グループ外なので据え置かれ、マージすると lint が即死する例があった
+#    （`typescript-eslint does not support TS 7.0`）。
+#    → **Dependabot の PR は「CIが緑だから安全」ではない。**
+#      lint/typecheck/test/build を手元で通してから取り込む。
+#      CI が lock ファイル未コミット等で落ちていると、そもそも検証されていない。
+#
+# 2. **`ignore` には必ず「理由」と「解除条件」をコメントで書く。**
+#    理由なしの ignore は、後から見た人（と将来の自分）が外してよいか判断できず、
+#    「無視してよい脆弱性」と誤読される。書くのは
+#      - なぜ上げられないのか（上流が固定している／ピアが非対応 等）
+#      - 攻撃面が成立しないと言える根拠、または残存リスクの受容判断
+#      - **何が起きたら ignore を外すのか**（確認コマンドつき）
+#
+# 3. 上流ライブラリが固定している推移的依存は Dependabot では直せない。
+#    security advisory の `patched-versions` が空なら、その系列に修正版は無い。
+#    ignore して記録するのが正しい対応（毎週マージ不可の PR が立つのを防ぐ）。
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -8,8 +28,17 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: "development"
+    # ignore:
+    #   - dependency-name: "<上流が固定していて上げられない依存>"
+    #   - dependency-name: "<ピアが未対応のもの>"
+    #     update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # 個別 PR が乱立すると PR 一覧が読めなくなるためまとめる
+      github-actions:
+        patterns:
+          - "*"
