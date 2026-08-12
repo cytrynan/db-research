@@ -14,5 +14,18 @@
     "deny": [],
     "ask": []
   },
-  "hooks": {}
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/scripts/check-log-companion.mjs\"",
+            "timeout": 20,
+            "statusMessage": "log.md追記漏れを検査中..."
+          }
+        ]
+      }
+    ]
+  }
 }
