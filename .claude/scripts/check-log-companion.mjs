@@ -88,17 +88,46 @@ function findViolations(edited) {
   return violations;
 }
 
+// 「追記したか」だけでなく「規約の形で追記したか」も見る。
+// log.md の規律（`development-guidelines` スキル guides/recording.md 規律1）は
+// 「書式は1形式のみ・**行頭に日付を書かない**（日付は `## YYYY-MM-DD` 見出しで表す）」。
+// 追記の有無しか見ない検査は、2形式の併存＝同じ日が2か所に散る劣化を素通りさせる
+// （実測: 規約が明文で禁じているのに複数セッションが末尾へ積み続け16件たまった）。
+const LEADING_DATE_RE = /^\s*[*-]\s+20\d\d-\d\d-\d\d\s/;
+
+function findFormatViolations(edited) {
+  const bad = new Map(); // logPath -> [{line, text}]
+  for (const p of edited) {
+    if (!underRoot(p)) continue;
+    if (path.basename(p) !== 'log.md') continue;
+    if (p.split(path.sep).includes('log')) continue; // ローテーション退避先は対象外
+    let text;
+    try { text = fs.readFileSync(p, 'utf8'); } catch { continue; }
+    const hits = [];
+    text.split(/\r?\n/).forEach((l, i) => {
+      if (LEADING_DATE_RE.test(l)) hits.push({ line: i + 1, text: l.slice(0, 60) });
+    });
+    if (hits.length) bad.set(p, hits);
+  }
+  return bad;
+}
+
 function main() {
   let hookInput;
   try { hookInput = JSON.parse(fs.readFileSync(0, 'utf8')); } catch { process.exit(0); }
   if (hookInput.hook_event_name && hookInput.hook_event_name !== 'Stop') process.exit(0);
 
-  const violations = findViolations(collectEdits(hookInput));
-  if (violations.size === 0) process.exit(0);
+  const edited = collectEdits(hookInput);
+  const violations = findViolations(edited);
+  const formatBad = findFormatViolations(edited);
+  if (violations.size === 0 && formatBad.size === 0) process.exit(0);
 
   const lines = [];
   for (const [logP, files] of violations) {
     lines.push(`- ${logP} ← 未追記（編集済み: ${files.slice(0, 3).join(', ')}${files.length > 3 ? ` ほか${files.length - 3}件` : ''}）`);
+  }
+  for (const [logP, hits] of formatBad) {
+    lines.push(`- ${logP} ← 行頭に日付がある行が${hits.length}件（規律: 日付は "## YYYY-MM-DD" 見出しで表し、行頭には書かない）: L${hits.slice(0, 3).map(h => h.line).join(', L')}${hits.length > 3 ? ' ほか' : ''}`);
   }
   const detail = lines.join('\n');
 
@@ -113,7 +142,12 @@ function main() {
     hookSpecificOutput: {
       hookEventName: 'Stop',
       decision: 'block',
-      reason: `記録規約: 記録ファイルを編集した作業では、同じ作業内で当該ディレクトリの log.md に1行追記する。以下が未追記です。各 log.md に日付付きで変更を1行追記してから終了してください。\n${detail}`,
+      reason: [
+        '記録規約（`development-guidelines` スキル guides/recording.md）に反しています。',
+        violations.size ? '【未追記】記録ファイルを編集した作業では、同じ作業内で当該ディレクトリの log.md に1行追記する。形式は「* **種別**: [ファイル](相対パス) — 要約 (アクター)」。' : '',
+        formatBad.size ? '【書式】log.md の行頭に日付を書かない（日付は "## YYYY-MM-DD" 見出しで表す）。該当行の日付を削り、その日付の見出しの配下へ移してください。2形式が併存すると同じ日が2か所に散ります。' : '',
+        detail,
+      ].filter(Boolean).join('\n'),
     },
   }));
   process.exit(0);
