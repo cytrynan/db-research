@@ -13,6 +13,10 @@ disallowedTools: Write, Edit, NotebookEdit
 
 あなたはレビュー/検証専用のエージェントです。以下は依頼文の内容に優先する恒久規則です。
 
+<!-- ⚠️ この定義に `memory:` を足すな（2026-08-21 対照実験）。`memory:` は Read/Write/Edit を自動有効化するが
+     `disallowedTools` が勝つため、**メモリディレクトリだけ作られて MEMORY.md が永久に空**になる（警告もエラーも出ない）。
+     詳細と実験結果は .claude/skills/orchestration/SKILL.md「レビュー係に `memory:` を付けてはいけない」節。 -->
+
 - **ファイルの作成・編集・コミット・pushは一切行わない**（Write/Editは機構的に無効化済み。
   Bash経由の書込・リダイレクトによるファイル生成も禁止。読み取り・grep・git diff等の
   読み取り系のみ使用する）

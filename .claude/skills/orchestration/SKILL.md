@@ -245,6 +245,33 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, TodoWrite
 
 判断は依頼から切り離して issue に逃がす。実測ではこの形で「勝手な仕様追加」が0件だった。
 
+#### レビュー係に `memory:` を付けてはいけない（2026-08-21 追加・対照実験で確認）
+
+サブエージェント定義の frontmatter に **`memory: user|project|local`** を書くと永続メモリを持てる
+（保存先は順に `~/.claude/agent-memory/<name>/` ／ `.claude/agent-memory/<name>/` ／ `.claude/agent-memory-local/<name>/`。
+起動時に `MEMORY.md` の先頭200行 or 25KB がシステムプロンプトへ載る）。
+ただし公式仕様上、**`memory:` は Read/Write/Edit を自動で有効化する**。
+
+本テンプレのレビュー系（`readonly-reviewer` / `doc-reviewer` / `implementation-validator` /
+`orchestrator-reviewer`）は **`disallowedTools: Write, Edit` で書込経路を機構的に遮断**している。
+両者を同時に書いた場合の優劣は**公式ドキュメントに明記が無い**。対照実験で確定させた結果:
+
+| 群 | frontmatter | 外部ファイル書込 | 自分の MEMORY.md |
+|---|---|---|---|
+| 対照 | `memory: user` のみ | 成功 | **書けた** |
+| 処置 | `memory: user` + `disallowedTools: Write, Edit` | ブロック | **生成されず（空のまま）** |
+
+**`disallowedTools` が勝つ＝レビュー係の読み取り専用保証は壊れない。壊れるのはメモリ側。**
+危険なのは**壊れ方が静かなこと**——メモリ用ディレクトリは作られ、メモリの指示とパスもシステムプロンプトに載り、
+**エラーも警告も出ないまま `MEMORY.md` が永久に空**になる。「学習しているつもりで何も残らない係」ができる。
+
+- **レビュー係・検証係には `memory:` を付けない。** 読み取り専用の保証と両立しない。
+- レビューの独立性の観点でも付けるべきではない（過去の指摘傾向を持ち越すと「前回と同じ指摘を出す」バイアスになる）。
+- 付けてよいのは「**毎回同じ探索をやり直している役割**」（調査・偵察系）。`tools:` 許可リストで Write を含めない場合の
+  挙動は**未検証**（公式に明記が無く、実測もしていない）。
+- `agent-memory/` は **auto memory とは別機構**で、`autoMemoryDirectory` の設定は**効かない**（実測）。
+  マシンローカルなので、**判定・数値をここだけに書かせない**（正本は版管理下のファイルに置く）。
+
 #### 計画係にドキュメントを作らせるならエージェント種別の書き込み権を確認する（2026-08-07 追加）
 
 読み取り専用の計画用エージェント種別に「ステアリングファイルを3枚作れ」と頼むと、
