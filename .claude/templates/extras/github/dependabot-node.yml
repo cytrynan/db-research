@@ -18,6 +18,22 @@
 # 3. 上流ライブラリが固定している推移的依存は Dependabot では直せない。
 #    security advisory の `patched-versions` が空なら、その系列に修正版は無い。
 #    ignore して記録するのが正しい対応（毎週マージ不可の PR が立つのを防ぐ）。
+# 4. **exact pin した `overrides` は「静かに再発する」**（2026-08-24 実測）。
+#    推移的依存の advisory を pnpm の `overrides` で exact pin して塞ぐ方式は即効性があるが、
+#    **pin した版そのものに次の advisory が出ても `pnpm update` は無反応**（pin が効いて
+#    旧版に固定され続ける）。Dependabot も上げられない。実測では 1 か月後の open 8 件のうち
+#    7 件が「自分が置いた pin の陳腐化」だった。
+#    → pin を置いたら **pin を見に行く手段も同時に用意する**（定期の `pnpm audit` /
+#      `gh api repos/<owner>/<repo>/dependabot/alerts` を作業として予定に入れる）。
+#      pin 自体は何も通知しない。
+#    → **「引きずる側」を上げても、pin の無い推移的依存は旧版のまま残る**
+#      （例: postcss を上げても、その依存の nanoid は旧版のまま）。対象ごとに
+#      `pnpm why <pkg> --depth 0` で解決結果を確認する。
+#    → 上げ幅は **同一マイナー系列の最新パッチ**に寄せる（最低修正版ちょうどだと再訪が増える）。
+#      メジャー跨ぎは API 互換の確認が別作業になるので混ぜない。
+#    → pin の行には **GHSA 番号・日付・理由**をコメントで残す。次に上げる人が
+#      「なぜこの版なのか」を復元できないと、盲目的に最新へ飛ばして壊す。
+#
 version: 2
 updates:
   - package-ecosystem: "npm"
