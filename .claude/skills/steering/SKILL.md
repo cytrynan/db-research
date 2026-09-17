@@ -57,6 +57,11 @@ allowed-tools: Read, Write, Edit, TodoWrite, Bash
    ```
    現在の日付を取得し、`.steering/[YYYYMMDD]-[機能名]/` の形式でディレクトリを作成
    ```
+   - **Phase 番号など連番の識別子を付けるなら、作成の直前に衝突を確認する**: `git worktree list` で全 worktree の
+     `.steering/` と、`.steering/_future/README.md` の Phase マップ（進行中の行）を見る。並行セッションが同じ番号を
+     先に使っていることがあり、起票・マイグレーション名まで進めてから振り直すと置換箇所が三桁になる。
+     番号を確定したら Phase マップに「進行中」行を先に足して、他セッションから見えるようにする。
+   - ディレクトリ名は **45 字以内**（issue ラベル `task/<unit>` の 50 字上限に当たると末尾が詰まる）。
 
 2. **永続ドキュメントの確認**
    - `docs/product-requirements.md`
