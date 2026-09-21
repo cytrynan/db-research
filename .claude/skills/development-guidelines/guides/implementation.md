@@ -795,6 +795,24 @@ const SWITCH_THRESHOLD = 45;
 - 導出式にできない事情（外部仕様・法規）があるときは、**由来を日付つきコメントで**書く。
 - 定数を変更したら、**同じ単位・同じ桁の数字リテラルを grep** して連動漏れを探す。
 
+**同じ集合を2箇所で列挙しない**: スキーマ移行で「最上位から入れ子へ**移す**フィールド」と
+「汎用コピーから**除く**フィールド」を別々に書くと、入れ子に新フィールドを足したとき片方だけ更新されて
+値が誤った階層に取り残される（読み手はそこを見ないので黙って消える）。連動する定数と同じ依存。
+
+```typescript
+// ✅ 良い例: 集合を1か所に置き、移動も除外もそこから回す
+const MOVED: Record<Kind, string[]> = { line: ['addressee', 'to'], mention: ['mentionUserIds'] };
+for (const key of MOVED[kind]) nested[key] = v[key];
+for (const key of Object.keys(v)) if (!MOVED[kind].includes(key)) out[key] = v[key];
+
+// ❌ 悪い例: 移す行と除外リストが別々（'to' を足すとき片方を忘れる）
+nested.addressee = v.addressee;
+for (const key of Object.keys(v)) if (key !== 'addressee') out[key] = v[key];
+```
+
+- 入れ子にフィールドを足したら、**既存の兄弟フィールド名で grep** し、ヒット数を新フィールドと突き合わせる
+  （検証原則31）。ヒット箇所はすべて「その集合を列挙している場所」。
+
 ### 全域からの検索で1件を操作しない
 
 id・文言・クラス名だけで**ドキュメント全域**から要素やレコードを探して操作すると、
