@@ -2,7 +2,25 @@
 
 ## 技術スタック
 
-> ⚠️ 未設定。`/init-stack` を実行して技術スタックを選択・初期化してください。
+- 開発環境: devcontainer
+- Python 3.12+
+- パッケージ管理: uv
+- Lint + Format: ruff
+- 型チェック: mypy (strict)
+- テストフレームワーク: pytest (+ pytest-cov)
+- DB: PostgreSQL（研究時は Docker 上で自前運用、実用運用時に Supabase へ移行）＋ pgvector
+  - **移行制約（2026-09-29 決定）**: 研究中も「Supabase で動く範囲」に限る＝PostgreSQL のメジャーバージョンを Supabase に合わせる／拡張は Supabase の対応一覧にあるものだけ／変更した設定値は `docs/` に記録し Supabase で再現可能か確認してから採用
+  - スキーマ変更は SQL マイグレーションファイルで管理する（管理画面で直接いじらない）
+
+## 主要コマンド
+
+```bash
+uv sync               # 依存関係を解決・インストール
+uv run ruff check .   # Lint
+uv run ruff format .  # Format
+uv run mypy src       # 型チェック
+uv run pytest         # テスト実行 (カバレッジ込み)
+```
 
 <!-- /init-stack 実行でこのセクションが具体的な技術スタック情報に書き換えられます -->
 <!-- 選択肢: Node.js + TypeScript / Python / Go / Rust / なし (言語非依存) -->
