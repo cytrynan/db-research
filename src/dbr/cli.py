@@ -309,6 +309,7 @@ def bench(
             embedder=emb,
             ef_search=ef_search,
             repo=REPO_ROOT,
+            log=lambda m: typer.echo(m, err=True),
         )
     except NoEmbeddings as exc:
         typer.echo(str(exc), err=True)

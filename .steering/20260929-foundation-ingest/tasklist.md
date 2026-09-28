@@ -2,7 +2,6 @@
 
 tracking: #1
 
-tracking: #{親issue番号}
 
 ## 🚨 タスク完全完了の原則
 

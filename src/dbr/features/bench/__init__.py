@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,10 @@ from dbr.shared.embed import Embedder
 from dbr.shared.text import dict_version
 
 DOC_K = 20  # 文書単位で上位 20 まで見る（recall@20）
-CHUNK_K = 100  # 断片はその 5 倍取ってから文書に畳む
+# 断片を文書に畳むと件数が減るので、断片は文書 20 件を確実に確保できる数を取る。
+# 100 だと上位 100 断片に 20 文書が含まれず 11〜20 位の文書が消えることがある
+# （2026-09-29 受入検証で指摘・現データの hybrid Q09 は 16 文書しか残らなかった）
+CHUNK_K = 500
 
 
 def run_find(
@@ -25,8 +29,15 @@ def run_find(
     embedder: Embedder | None,
     ef_search: int = 40,
     repo: Path | None = None,
+    log: Callable[[str], None] = print,
 ) -> dict[str, Any]:
     finds = [q for q in questions if q.kind == "find" and q.expected]
+    # 正解パスが無い find 行は測れない。黙って母数から外さず、記録に残す
+    skipped = [q.id for q in questions if q.kind == "find" and not q.expected]
+    for qid in skipped:
+        log(
+            f"WARN: {qid} は正解パス（バッククォート内の bundle/rel_path.md）が無く除外"
+        )
     result: dict[str, Any] = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "kind": "find",
@@ -35,6 +46,7 @@ def run_find(
         "sudachi_dict": dict_version(),
         "ef_search": ef_search,
         "question_count": len(finds),
+        "skipped": skipped,
         "modes": {},
     }
     for mode in modes:

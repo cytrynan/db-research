@@ -37,7 +37,14 @@ def test_twenty_questions_at_least_18_correct() -> None:
     assert correct >= 18, wrong
 
 
-@pytest.mark.parametrize("q", ["ありがとう", "今日は暑いね"])
+def test_lookalike_words_do_not_trigger_other_kinds() -> None:
+    c = RuleClassifier()
+    # 「いつも」は asof でなく、「いくつか」は count でない（2026-09-29 受入検証の指摘）
+    assert c.classify("いつも飲んでるサプリどこに書いた？").kind == "find"
+    assert c.classify("いくつか候補は？").kind == "unknown"
+
+
+@pytest.mark.parametrize("q", ["ありがとう", "今日は暑いね", "時間ある？", "何だっけ"])
 def test_unknown_is_not_forced_to_find(q: str) -> None:
     r = RuleClassifier().classify(q)
     assert r.kind == "unknown"

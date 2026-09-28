@@ -23,7 +23,7 @@ PRD の最優先 KPI は検索品質（D-11）。方式 4 段（埋め込みの�
 
 ### 3. 検索（F3）
 - `Mode = embed | fts | hybrid | hybrid_ctx`
-- fts: 質問も同じ分かち書きで `plainto_tsquery('simple', …)` → `ts_rank_cd`
+- fts: 質問も同じ分かち書きで、語を OR で結んだ `to_tsquery('simple', …)` → `ts_rank_cd`（実装時に AND から変更。理由は tasklist の振り返り）
 - embed: `embedding <=> :q` で cosine 距離昇順
 - hybrid: 両方の上位 100 件を RRF（k=60）で統合
 - 戻り値 `Hit(rel_path, bundle, heading_path, body, score, source)`

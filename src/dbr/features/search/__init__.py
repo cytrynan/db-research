@@ -75,18 +75,20 @@ def search(
         if embedder is None:
             raise ValueError("embed / hybrid には embedder が必要")
         variant = "ctx" if mode == "hybrid_ctx" else "plain"
+        # 各系の一次取得は k 以上（bench が文書 20 件を確保するため多めに要求してくる）
+        candidates = max(CANDIDATES, k)
         vrows = vector_search(
             conn,
             question,
             embedder=embedder,
             variant=variant,
-            limit=k if mode == "embed" else CANDIDATES,
+            limit=k if mode == "embed" else candidates,
             ef_search=ef_search,
             bundles=bundles,
         )
         if mode == "embed":
             return [_hit(r, "embed") for r in vrows]
-        frows = fts_search(conn, question, limit=CANDIDATES, bundles=bundles)
+        frows = fts_search(conn, question, limit=candidates, bundles=bundles)
     by_id: dict[int, dict[str, Any]] = {}
     src: dict[int, set[str]] = {}
     for r in frows:

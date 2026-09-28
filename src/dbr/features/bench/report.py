@@ -10,14 +10,21 @@ from typing import Any
 
 
 def git_sha(repo: Path) -> str:
+    """HEAD の短い SHA。未コミットの変更があれば `-dirty` を付ける（生成元の特定用）."""
     try:
-        out = subprocess.run(
+        head = subprocess.run(
             ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
             capture_output=True,
             text=True,
             check=True,
-        )
-        return out.stdout.strip()
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        return f"{head}-dirty" if status else head
     except Exception:  # pragma: no cover - git 無し
         return "unknown"
 

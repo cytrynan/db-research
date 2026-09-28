@@ -39,6 +39,19 @@ def test_hybrid_contains_both_sources(clean_db: str) -> None:
     assert ctx_hits
 
 
+def test_large_k_yields_every_document_after_dedupe(clean_db: str) -> None:
+    """bench 用: 断片を多めに取れば文書に畳んでも全文書が残る（打ち切りで消えない）."""
+    run(FIXTURES / "kuroko", "memory", clean_db, log=lambda _m: None)
+    run(FIXTURES / "okf-plain", "dev", clean_db, log=lambda _m: None)
+    fake = get_embedder("fake")
+    for b in ("memory", "dev"):
+        run_embed(b, "plain", clean_db, fake)
+    docs = dedupe_by_document(
+        search("本文", mode="hybrid", dsn=clean_db, k=500, embedder=fake)
+    )
+    assert len(docs) == 7  # fixture は 3 + 4 文書
+
+
 def test_bundle_filter(clean_db: str) -> None:
     run(FIXTURES / "kuroko", "memory", clean_db, log=lambda _m: None)
     run(FIXTURES / "okf-plain", "dev", clean_db, log=lambda _m: None)

@@ -8,6 +8,7 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — 受入検証の指摘を反映（v2 の JSON が残っていない旨を注記）。bench の断片打ち切り（100→500）は確定値に影響なしを実測済み (kuroko/claude-fable-5-1)
 * **Update**: [開発ガイドライン](development-guidelines.md) — 統合テストは別 DB `dbr_test`（`DBR_TEST_DSN`）を使う旨を追記（実データ DB を TRUNCATE しないため） (kuroko/claude-fable-5-1)
 * **Creation**: [検索品質の測定結果](bench-results.md) — find 10 問×4方式（確定 v3: fts 0.40 / embed 0.80 / hybrid 0.70 / hybrid_ctx 0.80 recall@5・MRR 最良 hybrid_ctx 0.675）と v1→v3 の方法論欠陥（AND・同点揺れ・HNSW 未使用） (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — Q10 の期待欄で正解に含めない tax/ パスをバッククォートから外す（bench のパーサは `` ` `` 内だけを正解と読む） (kuroko/claude-fable-5-1)

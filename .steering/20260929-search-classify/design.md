@@ -15,7 +15,7 @@ shared/text.tokenize(text) -> list[str]   # SudachiPy。ingest と search の両
 
 ### 1. `shared/text`（分かち書き）
 - `tokenize(text: str) -> list[str]`: NFC 正規化 → Sudachi（`sudachidict_core`・split mode C）→ `normalized_form()` を小文字化。記号・空白のみは除外
-- `lexemes(text) -> str`: `" ".join(tokenize(text))`。ingest はこれを `chunk.lexemes` に保存、検索は `plainto_tsquery('simple', lexemes(q))`
+- `lexemes(text) -> str`: `" ".join(tokenize(text))`。ingest はこれを `chunk.lexemes` に保存、検索は `to_tsquery('simple', or_tsquery(q))`（語を OR で結合。AND だと助詞で該当が消える）
 - Sudachi の辞書は重い（初期化 1〜2 秒）ので tokenizer はモジュール内で1回だけ作る
 
 ### 2. `shared/embed`
@@ -40,7 +40,7 @@ Mode = Literal["embed", "fts", "hybrid", "hybrid_ctx"]
 @dataclass(frozen=True) class Hit: chunk_id, bundle, rel_path, heading_path, body, score, source
 def search(q, *, mode, k=20, dsn, embedder=None, bundles=None) -> list[Hit]
 ```
-- `fts`: `SELECT ..., ts_rank_cd(tsv, query) AS score FROM chunk, plainto_tsquery('simple', %s) query WHERE tsv @@ query ORDER BY score DESC LIMIT 100`
+- `fts`: `SELECT ..., ts_rank_cd(tsv, query) AS score FROM chunk, to_tsquery('simple', %s /* 語を ' | ' で結合 */) query WHERE tsv @@ query ORDER BY score DESC LIMIT 100`
 - `embed`: `SELECT ..., 1 - (e.embedding <=> %s::vector) AS score FROM chunk_embedding e JOIN chunk ... WHERE e.variant=%s AND e.model=%s ORDER BY e.embedding <=> %s::vector LIMIT 100`（`SET LOCAL hnsw.ef_search = %s`）
 - `hybrid` / `hybrid_ctx`: fts と embed（variant plain / ctx）の順位を `rrf(rankings, k=60)` で統合し上位 k
 - `rrf` は純粋関数（`fuse.py`）でユニットテスト
@@ -88,7 +88,7 @@ def search(q, *, mode, k=20, dsn, embedder=None, bundles=None) -> list[Hit]
 - `load_questions`: 表のパースと期待パス抽出（複数パス・`tax/` 混在）
 ### 統合（`-m db`）
 - 0006/0007 適用・再適用 0 件
-- ingest 後 `lexemes` 非空・`tsv @@ plainto_tsquery` で fixture 該当
+- ingest 後 `lexemes` 非空・`tsv @@ to_tsquery`（OR） で fixture 該当
 - `embed` 冪等（フェイク Embedder＝決定的ベクトルで DB 側を検証。モデルは `slow`）
 - `search(mode=fts)` で updated.md が 1 位
 ### slow（実モデル）
