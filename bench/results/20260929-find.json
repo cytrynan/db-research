@@ -1,0 +1,603 @@
+{
+  "date": "2026-09-29",
+  "ef_search": 40,
+  "git_sha": "dff1d02",
+  "kind": "find",
+  "model": "intfloat/multilingual-e5-small",
+  "modes": {
+    "embed": {
+      "mrr": 0.5385746606334842,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 4,
+          "top5": [
+            "references/home.md",
+            "references/INDEX.md",
+            "references/workout.md",
+            "references/health.md",
+            "references/profile.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 2,
+          "top5": [
+            "references/log.md",
+            "references/health.md",
+            "references/university.md",
+            "dev/blender-modeling.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/home.md",
+            "dev/agent-orchestration.md",
+            "references/log.md",
+            "dev/tts-selection.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 2,
+          "top5": [
+            "references/fuyou.md",
+            "references/work.md",
+            "references/log.md",
+            "references/career-roadmap.md",
+            "references/health.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 2,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/work.md",
+            "dev/INDEX.md",
+            "references/university.md",
+            "dev/tech-radar.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": 17,
+          "top5": [
+            "dev/experiment-design.md",
+            "references/home.md",
+            "dev/recording.md",
+            "dev/authenticated-site-automation.md",
+            "dev/screen-capture-windows.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md",
+            "references/university.md",
+            "dev/tech-radar.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 13,
+          "top5": [
+            "dev/tech-radar.md",
+            "dev/slack-trigger-headless-claude.md",
+            "references/company-local-llm.md",
+            "references/INDEX.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 2,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "references/fuyou.md",
+            "references/university.md",
+            "references/learning.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "references/career-roadmap.md",
+            "references/money.md",
+            "references/work.md",
+            "references/log.md"
+          ]
+        }
+      ],
+      "recall@20": 1.0,
+      "recall@5": 0.8
+    },
+    "fts": {
+      "mrr": 0.3272222222222222,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/INDEX.md",
+            "dev/experiment-design.md",
+            "dev/agent-orchestration-log.md",
+            "dev/slack-trigger-headless-claude.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 9,
+          "top5": [
+            "dev/log/2026-08-2.md",
+            "dev/tdd-agent-experiments.md",
+            "dev/agent-orchestration-log.md",
+            "dev/claude-code-hooks.md",
+            "dev/recording.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 2,
+          "top5": [
+            "references/INDEX.md",
+            "references/preferences.md",
+            "references/home.md",
+            "references/health.md",
+            "references/work.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 2,
+          "top5": [
+            "references/INDEX.md",
+            "references/work.md",
+            "references/fuyou.md",
+            "references/log.md",
+            "dev/experiment-design.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": null,
+          "top5": [
+            "references/profile.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md",
+            "dev/log/2026-08.md",
+            "dev/experiment-design.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": null,
+          "top5": [
+            "dev/agent-orchestration.md",
+            "references/profile.md",
+            "dev/agent-orchestration-log.md",
+            "dev/log/2026-08.md",
+            "dev/log/2026-08-2.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 20,
+          "top5": [
+            "dev/log/2026-08-2.md",
+            "dev/tdd-agent-experiments.md",
+            "dev/agent-orchestration-log.md",
+            "dev/claude-code-hooks.md",
+            "dev/recording.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": null,
+          "top5": [
+            "dev/agent-orchestration.md",
+            "references/profile.md",
+            "dev/agent-orchestration-log.md",
+            "references/fuyou.md",
+            "dev/log/2026-08-2.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "dev/agent-orchestration-log.md",
+            "dev/agent-orchestration.md",
+            "dev/ai-development-architecture.md",
+            "dev/authenticated-site-automation.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 9,
+          "top5": [
+            "references/profile.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md",
+            "dev/log/2026-08.md",
+            "dev/log/2026-08-2.md"
+          ]
+        }
+      ],
+      "recall@20": 0.7,
+      "recall@5": 0.4
+    },
+    "hybrid": {
+      "mrr": 0.5416666666666667,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 2,
+          "top5": [
+            "references/INDEX.md",
+            "references/health.md",
+            "references/profile.md",
+            "dev/agent-orchestration-log.md",
+            "dev/experiment-design.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 2,
+          "top5": [
+            "dev/tdd-agent-experiments.md",
+            "references/health.md",
+            "references/log.md",
+            "dev/agent-orchestration.md",
+            "references/INDEX.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/home.md",
+            "references/INDEX.md",
+            "dev/tts-selection.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/fuyou.md",
+            "references/log.md",
+            "references/INDEX.md",
+            "references/career-roadmap.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 6,
+          "top5": [
+            "references/profile.md",
+            "dev/agent-orchestration.md",
+            "references/fuyou.md",
+            "dev/agent-orchestration-log.md",
+            "references/career-roadmap.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": null,
+          "top5": [
+            "dev/log/2026-08.md",
+            "dev/recording.md",
+            "dev/experiment-design.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 4,
+          "top5": [
+            "dev/agent-orchestration-log.md",
+            "dev/agent-orchestration.md",
+            "dev/recording.md",
+            "references/preferences.md",
+            "references/fuyou.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": null,
+          "top5": [
+            "dev/slack-trigger-headless-claude.md",
+            "dev/tech-radar.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md",
+            "dev/ai-development-architecture.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/work.md",
+            "references/university.md",
+            "references/fuyou.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "references/profile.md",
+            "references/money.md",
+            "references/log.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        }
+      ],
+      "recall@20": 0.8,
+      "recall@5": 0.7
+    },
+    "hybrid_ctx": {
+      "mrr": 0.675,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/INDEX.md",
+            "dev/experiment-design.md",
+            "references/profile.md",
+            "dev/log/2026-08-2.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/log.md",
+            "dev/agent-orchestration.md",
+            "dev/tdd-agent-experiments.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/home.md",
+            "references/INDEX.md",
+            "dev/tts-selection.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/fuyou.md",
+            "references/log.md",
+            "references/INDEX.md",
+            "references/career-roadmap.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 4,
+          "top5": [
+            "references/profile.md",
+            "dev/agent-orchestration-log.md",
+            "references/fuyou.md",
+            "references/work.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": 9,
+          "top5": [
+            "dev/log/2026-08.md",
+            "dev/recording.md",
+            "dev/experiment-design.md",
+            "dev/agent-orchestration-log.md",
+            "dev/log/2026-08-2.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 3,
+          "top5": [
+            "dev/recording.md",
+            "dev/agent-orchestration-log.md",
+            "references/preferences.md",
+            "dev/agent-orchestration.md",
+            "dev/experiment-design.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 18,
+          "top5": [
+            "dev/slack-trigger-headless-claude.md",
+            "dev/tech-radar.md",
+            "dev/agent-orchestration-log.md",
+            "dev/ai-development-architecture.md",
+            "dev/headless-claude.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/work.md",
+            "references/university.md",
+            "dev/authenticated-site-automation.md",
+            "references/fuyou.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "references/profile.md",
+            "references/money.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        }
+      ],
+      "recall@20": 1.0,
+      "recall@5": 0.8
+    }
+  },
+  "question_count": 10,
+  "sudachi_dict": "sudachidict_core==20260723.1"
+}

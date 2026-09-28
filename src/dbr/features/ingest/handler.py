@@ -22,6 +22,7 @@ from dbr.features.ingest.chunker import split
 from dbr.features.ingest.context import context_for
 from dbr.features.ingest.frontmatter import FrontmatterError, ParsedDoc, parse
 from dbr.shared.db import connect
+from dbr.shared.text import lexemes
 
 BUNDLES = frozenset(
     {"references", "dev", "stock", "tax", "scout", "memory", "experiments"}
@@ -152,18 +153,21 @@ def _upsert(
         # ※ 2026-09-29 の「取り込み 2 分」は INSERT ではなく localhost→::1 の接続待ちが
         #   原因だった（shared/db.connect のコメント参照）。INSERT 自体は速い。
         with cur.copy(
-            "COPY chunk (document_id, ordinal, heading_path, body, context, tokens) "
-            "FROM STDIN"
+            "COPY chunk (document_id, ordinal, heading_path, body, context, tokens, "
+            "lexemes) FROM STDIN"
         ) as copy:
             for c in split(doc.body):
+                ctx = context_for(bundle, rel_path, c.heading_path, desc)
                 copy.write_row(
                     (
                         doc_id,
                         c.ordinal,
                         c.heading_path,
                         c.body,
-                        context_for(bundle, rel_path, c.heading_path, desc),
+                        ctx,
                         c.tokens,
+                        # 見出し・文脈も索引する（検索側と同じ tokenize）
+                        lexemes(f"{c.heading_path}\n{ctx}\n{c.body}"),
                     )
                 )
     return doc_id

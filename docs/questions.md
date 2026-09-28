@@ -32,7 +32,7 @@ status: draft
 | Q07 | 深煎りが好きって書いたのどこだっけ | find | `references/preferences.md` | 語句一致はあるが節が不明 |
 | Q08 | 家にあるスキャナ的なことできるツールある？ | find | `references/tools.md`（OCR/PDF） | 言い換え（「OCR」を含まない） |
 | Q09 | 卒業までに取る資格の計画 | find | `references/career-roadmap.md` | 直撃だが「資格」は work にも出る＝順位を見る |
-| Q10 | 扶養で気にする年収ラインの、K の判定はどこ | find | `references/fuyou.md`（制度は `tax/nenshu-kabe-seido.md` で**別**） | 制度と本人判定の分離を検索が区別できるか |
+| Q10 | 扶養で気にする年収ラインの、K の判定はどこ | find | `references/fuyou.md`（制度は tax/nenshu-kabe-seido.md で**別**＝正解に含めない） | 制度と本人判定の分離を検索が区別できるか。bench は `` ` `` で囲んだパスだけを正解として読む |
 | Q11 | references のファイルは全部で何件？ | count | `v_by_bundle`（bundle='references'） | ビュー |
 | Q12 | K が確認済み（verified）の記録は references に何件ある？ | count | `v_unverified` の補集合（bundle='references'） | ビュー |
 | Q13 | 期限切れ（stale_after 超過）の記録はいくつ？ | count | `v_stale` | ビュー。bench 実行日に依存＝JSON に実行日を記録 |

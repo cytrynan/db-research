@@ -11,6 +11,11 @@ dependencies = [
     "typer>=0.12",
     "python-frontmatter>=1.1",
     "pyyaml>=6",
+    "sudachipy>=0.6",
+    "sudachidict-core>=20240000",
+    "sentence-transformers>=3.0",
+    "pgvector>=0.3",
+    "numpy>=1.26",
 ]
 
 [project.scripts]
@@ -48,3 +53,8 @@ markers = [
 python_version = "3.12"
 strict = true
 exclude = ["build/", "dist/", ".steering/"]
+
+[[tool.mypy.overrides]]
+# 型スタブ／py.typed を持たない外部ライブラリ
+module = ["sudachipy", "sudachipy.*", "sentence_transformers", "sentence_transformers.*", "pgvector", "pgvector.*"]
+ignore_missing_imports = true

@@ -56,7 +56,7 @@ status: draft
 | マーカー | 意味 | 実行 |
 |---|---|---|
 | （なし） | DB 不要のユニット | `uv run pytest` |
-| `db` | Docker の PostgreSQL が要る統合 | `uv run pytest -m db`。DB 未起動は**失敗**（スキップ禁止） |
+| `db` | Docker の PostgreSQL が要る統合 | `uv run pytest -m db`。DB 未起動は**失敗**（スキップ禁止）。**別 DB `dbr_test`** を使う（`document` を TRUNCATE するため。環境変数 `DBR_TEST_DSN`） |
 | `e2e` | bench の再現性 | `uv run pytest -m e2e` |
 | `slow` | 埋め込みモデルを実際に動かす | 既定では除外。`-m slow` で実行 |
 

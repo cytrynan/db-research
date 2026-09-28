@@ -12,7 +12,9 @@ import pytest
 from dbr.shared.db import connect
 from dbr.shared.db.migrate import migrate
 
-DEFAULT_DSN = "postgresql://dbr:dbr@127.0.0.1:5432/dbr"
+# 統合テストは document を TRUNCATE するので、実データを入れる `dbr` とは別 DB（`dbr_test`）を使う。
+# 作成: docker exec dbr_pg psql -U dbr -d dbr -c "CREATE DATABASE dbr_test"
+DEFAULT_DSN = "postgresql://dbr:dbr@127.0.0.1:5432/dbr_test"
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "migrations"
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -20,7 +22,7 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 @pytest.fixture(scope="session")
 def dsn() -> str:
-    value = os.environ.get("DBR_DSN", DEFAULT_DSN)
+    value = os.environ.get("DBR_TEST_DSN", DEFAULT_DSN)
     try:
         conn = connect(value)
     except psycopg.OperationalError as exc:  # pragma: no cover - 環境依存

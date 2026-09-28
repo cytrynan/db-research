@@ -14,6 +14,10 @@ docker compose up -d --wait     # PostgreSQL 16 + pgvector を 127.0.0.1:5432 �
 uv run dbr migrate              # migrations/ を番号順に適用（再実行は 0 件）
 uv run dbr ingest ~/.agents/knowledge/dev --bundle dev   # OKF フォルダを取り込み（冪等）
 uv run dbr count v_by_bundle    # ② 数える: 定義済みビュー（v_by_bundle / v_by_type / v_unverified / v_stale）
+uv run dbr embed --bundle dev --variant plain   # 埋め込み（ローカル e5-small・CPU・冪等）。--variant ctx で文脈付き
+uv run dbr ask "メガネの度数どこに書いた？"     # 型判定 → find なら検索（--mode fts|embed|hybrid|hybrid_ctx）
+uv run dbr bench --kind find    # find 10 問 × 4 方式の recall@5 / recall@20 / MRR（結果: docs/bench-results.md）
+uv run dbr reindex --bundle dev # 分かち書き規則を変えたとき lexemes だけ再計算
 uv run pytest                   # ユニット / uv run pytest -m db で統合（Docker 必須）
 ```
 
