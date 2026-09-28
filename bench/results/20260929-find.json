@@ -1,7 +1,7 @@
 {
   "date": "2026-09-29",
   "ef_search": 40,
-  "git_sha": "dff1d02",
+  "git_sha": "fd55c29",
   "kind": "find",
   "model": "intfloat/multilingual-e5-small",
   "modes": {
@@ -302,7 +302,7 @@
       "recall@5": 0.4
     },
     "hybrid": {
-      "mrr": 0.5416666666666667,
+      "mrr": 0.5521428571428572,
       "per_question": [
         {
           "expected": [
@@ -366,13 +366,13 @@
             "references/work.md"
           ],
           "id": "Q05",
-          "rank": 6,
+          "rank": 5,
           "top5": [
             "references/profile.md",
             "dev/agent-orchestration.md",
-            "references/fuyou.md",
             "dev/agent-orchestration-log.md",
-            "references/career-roadmap.md"
+            "references/fuyou.md",
+            "references/work.md"
           ]
         },
         {
@@ -408,13 +408,13 @@
             "references/tools.md"
           ],
           "id": "Q08",
-          "rank": null,
+          "rank": 14,
           "top5": [
             "dev/slack-trigger-headless-claude.md",
             "dev/tech-radar.md",
             "dev/agent-orchestration.md",
             "dev/agent-orchestration-log.md",
-            "dev/ai-development-architecture.md"
+            "references/profile.md"
           ]
         },
         {
@@ -440,17 +440,17 @@
           "top5": [
             "references/fuyou.md",
             "references/profile.md",
-            "references/money.md",
-            "references/log.md",
+            "dev/agent-orchestration.md",
+            "dev/experiment-design.md",
             "dev/agent-orchestration-log.md"
           ]
         }
       ],
-      "recall@20": 0.8,
-      "recall@5": 0.7
+      "recall@20": 0.9,
+      "recall@5": 0.8
     },
     "hybrid_ctx": {
-      "mrr": 0.675,
+      "mrr": 0.676025641025641,
       "per_question": [
         {
           "expected": [
@@ -463,7 +463,7 @@
             "references/INDEX.md",
             "dev/experiment-design.md",
             "references/profile.md",
-            "dev/log/2026-08-2.md"
+            "references/fuyou.md"
           ]
         },
         {
@@ -518,9 +518,9 @@
           "top5": [
             "references/profile.md",
             "dev/agent-orchestration-log.md",
-            "references/fuyou.md",
+            "dev/agent-orchestration.md",
             "references/work.md",
-            "dev/agent-orchestration.md"
+            "references/fuyou.md"
           ]
         },
         {
@@ -528,7 +528,7 @@
             "references/health.md"
           ],
           "id": "Q06",
-          "rank": 9,
+          "rank": 10,
           "top5": [
             "dev/log/2026-08.md",
             "dev/recording.md",
@@ -556,13 +556,13 @@
             "references/tools.md"
           ],
           "id": "Q08",
-          "rank": 18,
+          "rank": 13,
           "top5": [
             "dev/slack-trigger-headless-claude.md",
             "dev/tech-radar.md",
             "dev/agent-orchestration-log.md",
-            "dev/ai-development-architecture.md",
-            "dev/headless-claude.md"
+            "references/home.md",
+            "references/profile.md"
           ]
         },
         {
@@ -588,9 +588,9 @@
           "top5": [
             "references/fuyou.md",
             "references/profile.md",
-            "references/money.md",
+            "dev/agent-orchestration-log.md",
             "dev/agent-orchestration.md",
-            "dev/agent-orchestration-log.md"
+            "dev/log/2026-08-2.md"
           ]
         }
       ],
@@ -599,5 +599,6 @@
     }
   },
   "question_count": 10,
+  "skipped": [],
   "sudachi_dict": "sudachidict_core==20260723.1"
 }
