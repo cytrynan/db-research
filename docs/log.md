@@ -8,6 +8,7 @@
 
 ## 2026-09-29
 
+* **Creation**: [決定台帳](decisions.md) — 2026-09-29 の決定 D-1〜D-10（D-4a 撤回含む）と未決事項を台帳化 (kuroko/claude-fable-5-1)
 * **Creation**: [研究の方向づけ（2026-09-29）](ideas/20260929-research-direction.md) — 質問4分類・データ置き場の境界・OKF正本＋DB派生索引・有効期間の独自キー方針を下書き化 (kuroko/claude-fable-5-1)
 
 ## 2026-08-01
