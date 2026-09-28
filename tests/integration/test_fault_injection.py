@@ -45,6 +45,15 @@ def test_private_md_excluded_by_walk_and_rejected_by_trigger(clean_db: str) -> N
         )
     assert count_rows(clean_db, "document") == 1
 
+    # 大文字始まり（Windows では同一ファイル）も migration 0005 で拒否される
+    conn = connect(clean_db)
+    with pytest.raises(psycopg.errors.CheckViolation), conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO document (bundle, rel_path, format, fm, content_hash) "
+            "VALUES ('references', 'sub/Private.md', 'okf', '{}'::jsonb, 'y')"
+        )
+    assert count_rows(clean_db, "document") == 1
+
 
 def test_unknown_view_rejected_without_query(clean_db: str) -> None:
     with pytest.raises(UnknownAggregate) as ei:

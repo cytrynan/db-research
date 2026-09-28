@@ -119,6 +119,8 @@ def test_normalize_rel_path_posix_nfc(tmp_path: Path) -> None:
         ("private.md", True),
         ("deep/private.md", True),
         ("private.md.bak-20260811", True),
+        ("Private.md", True),
+        ("sub/PRIVATE.MD", True),
         ("notes.bak.md", True),
         ("privateer.md", False),
         ("a/b.md", False),

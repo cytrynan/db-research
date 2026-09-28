@@ -47,3 +47,7 @@ __pycache__/
 .venv/
 venv/
 htmlcov/
+
+# カバレッジの生成物
+.coverage
+.coverage.*

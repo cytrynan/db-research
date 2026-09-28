@@ -67,7 +67,8 @@ def normalize_rel_path(root: Path, path: Path) -> str:
 
 
 def is_excluded(rel_path: str) -> bool:
-    name = rel_path.rsplit("/", 1)[-1]
+    # 大文字小文字は区別しない（Windows の FS は区別せず `Private.md` が同一ファイル）
+    name = rel_path.rsplit("/", 1)[-1].lower()
     if name == PRIVATE_NAME or name.startswith(PRIVATE_NAME + "."):
         return True
     return ".bak" in name

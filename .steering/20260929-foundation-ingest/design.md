@@ -56,7 +56,7 @@ shared/db/__init__.connect(dsn) ──▶ loopback.assert_loopback(dsn) ──�
 3. parse → ParsedDoc、失敗は failed++ して続行
 4. hash 照合 → insert / update / skip
 5. chunk → context → INSERT chunk
-6. commit（ファイル単位）。rejected>0 なら rollback して例外
+6. 全ファイルを1トランザクションで commit（実装時に変更: 境界違反で**全体を** rollback するため）。rejected>0 なら rollback して例外
 7. IngestReport を返す
 ```
 

@@ -55,8 +55,8 @@ tracking: #{親issue番号}
 
 ## フェーズ5: 実データと品質チェック
 
-- [x] 実データ取り込みと品質ゲート3点 (#6)
-  - [x] `uv run dbr ingest ~/.agents/knowledge/dev --bundle dev` を実行し件数がファイル数と一致・30 秒以内を記録
+- [x] 実データ取り込みと品質ゲート3点 (#6)（受入条件「件数がファイル数と一致」は 52/53＝1 件 failed。理由は振り返り参照）
+  - [x] `uv run dbr ingest ~/.agents/knowledge/dev --bundle dev` を実行: 53 ファイル中 52 取り込み・1 件 YAML 不正で failed（pending-proposals.md・知見側を修正済み）。所要 1.6 秒（接続の罠を直す前は 131 秒）
   - [x] リント（`uv run ruff check .` / `uv run ruff format --check .`）
   - [x] 型チェック（`uv run mypy src`）
   - [x] テスト（`uv run pytest` と `uv run pytest -m db`）
@@ -108,6 +108,13 @@ tracking: #{親issue番号}
 **リポジトリをまたいで使える知見**:
 - `localhost`→`::1` 先行で Docker Desktop 宛の接続が 130 秒止まる罠（`dev/docker-desktop-windows.md` に記録済み）
 - OKF `description` の `: ` で YAML が壊れる（`dev/recording.md` への追記候補・検査器で FAIL 化を提案）
+
+### 受入検証（別コンテキスト・readonly-reviewer / Opus・2026-09-29）
+- Codex は usage limit で起動不可 → 例外(c)で Claude が代行
+- 判定: 要件2〜6 PASS、**要件1 FAIL**（`hostaddr` / `PGHOSTADDR` / `service` でループバック検査を素通りし、TEST-NET の 192.0.2.1 へ接続を試みた反例）→ 採用して修正: `hostaddr`・`service` を検査、接続時に `hostaddr` を明示して環境変数を無効化。テスト 6 ケース追加
+- 近道検査: 3 が該当（tasklist の「件数一致」主張と「1 件 failed」が自己矛盾）→ 文言を実態に訂正。1・2・4 は該当なし
+- 任意の指摘から採用: `Private.md`（大文字）が走査・トリガーをすり抜ける → 両方 lower() 比較に（migration 0005・既存 0002 は不変）
+- 副作用: レビュー係の pytest 実行で追跡中の `.coverage` が動いた → `.gitignore` に追加し追跡解除（そもそも commit すべきでなかった）
 
 ### 次回への改善提案
 - 次の作業単位（埋め込み・全文検索）は `chunk` に `tsv` 生成列と `chunk_embedding` 表を**新番号のマイグレーション**で足す。既存 0003 は触らない
