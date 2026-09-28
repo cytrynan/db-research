@@ -12,7 +12,7 @@ import pytest
 from dbr.shared.db import connect
 from dbr.shared.db.migrate import migrate
 
-# 統合テストは document を TRUNCATE するので、実データを入れる `dbr` とは別 DB（`dbr_test`）を使う。
+# 統合テストは document を TRUNCATE するので、実データの `dbr` とは別 DB（`dbr_test`）。
 # 作成: docker exec dbr_pg psql -U dbr -d dbr -c "CREATE DATABASE dbr_test"
 DEFAULT_DSN = "postgresql://dbr:dbr@127.0.0.1:5432/dbr_test"
 ROOT = Path(__file__).resolve().parents[2]
