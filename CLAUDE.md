@@ -8,8 +8,9 @@
 - Lint + Format: ruff
 - 型チェック: mypy (strict)
 - テストフレームワーク: pytest (+ pytest-cov)
-- DB: PostgreSQL（研究時は Docker 上で自前運用、実用運用時に Supabase へ移行）＋ pgvector
-  - **移行制約（2026-09-29 決定）**: 研究中も「Supabase で動く範囲」に限る＝PostgreSQL のメジャーバージョンを Supabase に合わせる／拡張は Supabase の対応一覧にあるものだけ／変更した設定値は `docs/` に記録し Supabase で再現可能か確認してから採用
+- DB: PostgreSQL（Docker 上で自前運用）＋ pgvector
+  - **データの置き場（2026-09-29 K決定）**: 本リポの主対象は **K の個人データ**。個人データは **手元の PostgreSQL のみ**に置き、**Supabase 等の外部ホスティングには一切載せない**（`~/.claude/CLAUDE.md` §0 と同じ境界）
+  - **Supabase の位置づけ**: 将来「会社で使えたらいい」程度の参考。**研究の制約にはしない**。ただし機能面で差が無いなら Supabase 対応の拡張・設定を優先して選ぶ（後で会社向けに転用しやすくするため。強制ではない）
   - スキーマ変更は SQL マイグレーションファイルで管理する（管理画面で直接いじらない）
 
 ## 主要コマンド
