@@ -8,6 +8,11 @@
 
 ## 2026-09-29
 
+* **Creation**: [用語集](glossary.md) — 初版（4型・recall@k/MRR/RRF・バイテンポラル・OKF/くろこ拡張・pgvector/HNSW・例外クラス） (kuroko/claude-fable-5-1)
+* **Creation**: [開発ガイドライン](development-guidelines.md) — 初版（データ境界3遮断＝故障注入必須・SQL 既存マイグレーション編集禁止・pytest マーカー db/e2e/slow・レビュー必須6項目・セットアップ手順） (kuroko/claude-fable-5-1)
+* **Creation**: [リポジトリ構造定義書](repository-structure.md) — 初版（src/dbr/features/<7機能>/ ＋ shared/db・shared/embed、migrations/ 番号順、bench/results は commit、依存の向き） (kuroko/claude-fable-5-1)
+* **Creation**: [技術仕様書](architecture.md) — 初版（PostgreSQL16+pgvector Docker・psycopg3・typer・SudachiPy→tsvector 採用・RRF・HNSW ef_search 40/100/250 測定・ローカル埋め込みを個人バンドルの唯一経路・未決3件） (kuroko/claude-fable-5-1)
+* **Creation**: [機能設計書](functional-design.md) — 初版（データモデル: document/chunk/chunk_embedding/fact/summary/question・コンポーネント7つ・RRF 統合・ループバック強制・エラー表・テスト戦略）。PRD 承認後の自動生成 (kuroko/claude-fable-5-1)
 * **Verify**: [プロダクト要求定義書](product-requirements.md) — K承認（修正2点: 検索品質を最優先KPI化／OKF素とくろこ拡張の両取り込み＋比較）を反映し verified 付与・status: stable (human:K / kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-11（検索品質最優先）・D-12（OKF 2形式の比較採用）を追加、未決を更新 (kuroko/claude-fable-5-1)
 * **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版ドラフト（F1〜F7 MVP・F8/F9 将来・KPI 型別正答率・ローカル接続強制）。K 承認待ち (kuroko/claude-fable-5-1)
