@@ -5,6 +5,21 @@ K の個人記録を **質問の型（探し物／数える／時点／全体）
 
 > このリポジトリは [claude-code-template](https://github.com/6dorg/claude-code-template) から作成。以下はテンプレートの利用手順（参考）。
 
+## 使い方（研究の土台・2026-09-29 時点）
+
+```bash
+uv sync
+cp .env.example .env            # DBR_DSN=postgresql://dbr:dbr@127.0.0.1:5432/dbr（localhost は使わない）
+docker compose up -d --wait     # PostgreSQL 16 + pgvector を 127.0.0.1:5432 にだけ公開
+uv run dbr migrate              # migrations/ を番号順に適用（再実行は 0 件）
+uv run dbr ingest ~/.agents/knowledge/dev --bundle dev   # OKF フォルダを取り込み（冪等）
+uv run dbr count v_by_bundle    # ② 数える: 定義済みビュー（v_by_bundle / v_by_type / v_unverified / v_stale）
+uv run pytest                   # ユニット / uv run pytest -m db で統合（Docker 必須）
+```
+
+- 個人データの DB は **ループバック接続のみ**（`example.com` 等は exit 3）。`private.md` は走査除外＋DB トリガーで二重拒否
+- 決定は [docs/decisions.md](docs/decisions.md)、進捗は `.steering/20260929-foundation-ingest/tasklist.md`
+
 ---
 
 ## 要点（まずここだけ）

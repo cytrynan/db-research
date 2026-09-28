@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
 
 from dbr.shared.db.loopback import LoopbackViolation, assert_loopback
@@ -23,6 +24,15 @@ def resolve_dsn(explicit: str | None = None) -> str:
 
 
 def connect(dsn: str) -> psycopg.Connection[dict[str, object]]:
-    """ループバック検査を通してから接続する（検査は接続前）."""
+    """ループバック検査を通してから接続する（検査は接続前）.
+
+    host が `localhost` のときは `127.0.0.1` に置き換える。Windows では localhost が
+    先に ::1 へ解決され、Docker Desktop は 127.0.0.1 にしかポートを出さないため、
+    IPv6 側のタイムアウト（実測 130 秒）を待ってから IPv4 に落ちる（2026-09-29 実測）。
+    """
     assert_loopback(dsn)
-    return psycopg.connect(dsn, row_factory=dict_row)
+    info = conninfo_to_dict(dsn)
+    if str(info.get("host", "")).lower() == "localhost":
+        info["host"] = "127.0.0.1"
+    info.setdefault("connect_timeout", 5)
+    return psycopg.connect(make_conninfo("", **info), row_factory=dict_row)

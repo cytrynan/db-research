@@ -96,7 +96,7 @@ status: draft
 git clone https://github.com/cytrynan/db-research.git
 cd db-research
 uv sync
-cp .env.example .env          # DBR_DSN=postgresql://dbr:dbr@localhost:5432/dbr
+cp .env.example .env          # DBR_DSN=postgresql://dbr:dbr@127.0.0.1:5432/dbr
 docker compose up -d
 uv run dbr migrate
 uv run dbr ingest ~/.agents/knowledge/dev

@@ -8,6 +8,7 @@
 
 ## 2026-09-29
 
+* **Update**: [開発ガイドライン](development-guidelines.md) — DSN 例を 127.0.0.1 に変更（localhost は Windows で ::1 先行→Docker Desktop に届かず 130 秒待つ実測）。README に使い方（migrate/ingest/count）を追記 (kuroko/claude-fable-5-1)
 * **Creation**: [質問セット（20問）](questions.md) — references/INDEX.md のトリガー語・横断トピックから作成（find10/count4/asof4/overview2）。正解は所在のみ・値は書かない (kuroko/claude-fable-5-1)
 * **Creation**: [用語集](glossary.md) — 初版（4型・recall@k/MRR/RRF・バイテンポラル・OKF/くろこ拡張・pgvector/HNSW・例外クラス） (kuroko/claude-fable-5-1)
 * **Creation**: [開発ガイドライン](development-guidelines.md) — 初版（データ境界3遮断＝故障注入必須・SQL 既存マイグレーション編集禁止・pytest マーカー db/e2e/slow・レビュー必須6項目・セットアップ手順） (kuroko/claude-fable-5-1)

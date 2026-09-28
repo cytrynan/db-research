@@ -34,6 +34,7 @@ packages = ["src/dbr"]
 [tool.pytest.ini_options]
 # ユニットテストはスライス内（src/）に同居、統合は tests/integration（-m db）
 testpaths = ["src", "tests"]
+pythonpath = ["."]
 # 既定はユニットのみ。カバレッジ 80% の判定は全テスト（db 含む）で行う:
 #   uv run pytest -m "db or not db" --cov-fail-under=80
 addopts = "--cov=src --cov-report=term --cov-report=html -m 'not db and not e2e and not slow'"

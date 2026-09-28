@@ -27,7 +27,8 @@ def list_migrations(directory: Path) -> list[Path]:
     files: list[Path] = []
     for p in sorted(directory.glob("*.sql")):
         if not MIGRATION_NAME.match(p.name):
-            raise ValueError(f"マイグレーション名が規則外: {p.name} (NNNN_snake_case.sql)")
+            msg = f"マイグレーション名が規則外: {p.name} (NNNN_snake_case.sql)"
+            raise ValueError(msg)
         files.append(p)
     return files
 
@@ -51,7 +52,7 @@ def migrate(conn: psycopg.Connection[dict[str, object]], directory: Path) -> lis
         sql = path.read_text(encoding="utf-8")
         try:
             with conn.cursor() as cur:
-                cur.execute(sql)  # type: ignore[arg-type]  # 生 SQL ファイルをそのまま流す
+                cur.execute(sql)  # 生 SQL ファイルをそのまま流す
                 cur.execute(
                     "INSERT INTO schema_migrations(version) VALUES (%(v)s)",
                     {"v": path.name},
