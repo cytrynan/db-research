@@ -1,8 +1,8 @@
 [project]
-name = "{{PROJECT_NAME}}"
+name = "db-research"
 version = "0.1.0"
-description = "{{PROJECT_DESCRIPTION}}"
-authors = [{ name = "{{AUTHOR}}" }]
+description = "K の個人記録を質問の型で振り分けて検索する PostgreSQL 基盤の研究"
+authors = [{ name = "cytrynan" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.12"

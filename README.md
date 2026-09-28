@@ -1,8 +1,9 @@
-# claude-code-template
+# db-research
 
-Claude Code を使ったスペック駆動開発のための **言語非依存の汎用テンプレート** です。
+K の個人記録を **質問の型（探し物／数える／時点／全体）で振り分けて検索する PostgreSQL 基盤** の研究リポジトリ。
+決まったことは [docs/decisions.md](docs/decisions.md)、方向づけは [docs/ideas/](docs/ideas/) を参照。
 
-クローン後、対話的なスラッシュコマンドで技術スタック・プロジェクト情報を初期化し、開発を開始できます。
+> このリポジトリは [claude-code-template](https://github.com/6dorg/claude-code-template) から作成。以下はテンプレートの利用手順（参考）。
 
 ---
 
