@@ -13,6 +13,8 @@ select = [
     "RUF",      # ruff-specific
 ]
 ignore = []
+# 日本語の docstring/メッセージで全角記号を使う（RUF001/RUF002 の誤検出を止める）
+allowed-confusables = ["（", "）", "＝", "／", "＋", "：", "・", "〜"]
 
 [format]
 quote-style = "double"

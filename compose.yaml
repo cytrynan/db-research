@@ -1,0 +1,25 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: dbr_pg
+    environment:
+      POSTGRES_USER: dbr
+      POSTGRES_PASSWORD: dbr
+      POSTGRES_DB: dbr
+    # 個人データを置く DB なので、ホストのループバックにだけ公開する（D-5）
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dbr_pg:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbr -d dbr"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  dbr_pg:
