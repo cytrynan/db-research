@@ -11,15 +11,15 @@ tracking: #23
 
 ## フェーズ1: 事実の抽出（F5・スキーマ）
 
-- [~] 0008_fact.sql・`ingest/facts.py`（explicit / dated_text / inferred・削除→COPY）・`dbr facts`・fixture `dated/`・統合テスト（件数・冪等） (#24)
+- [x] 0008_fact.sql・`ingest/facts.py`（explicit / dated_text / inferred・削除→COPY）・`dbr facts`・fixture `dated/`・統合テスト（件数・冪等） (#24)
 
 ## フェーズ2: 時点の問い合わせ（F5）
 
-- [ ] `features/asof`（as_of / history / parse_at）・`ask` の asof 分岐と `--at`・ユニット＋統合（時点フィルタ・昇順） (#25)
+- [x] `features/asof`（as_of / history / parse_at）・`ask` の asof 分岐と `--at`・ユニット＋統合（時点フィルタ・昇順） (#25)
 
 ## フェーズ3: 全体（F6）
 
-- [ ] 0009_summary.sql・`ingest/summarize.py`（抽出型 3 段・source_hash）・`features/overview`・`ask` の overview 分岐・統合テスト（3 段・冪等） (#26)
+- [~] 0009_summary.sql・`ingest/summarize.py`（抽出型 3 段・source_hash）・`features/overview`・`ask` の overview 分岐・統合テスト（3 段・冪等） (#26)
 
 ## フェーズ4: bench（count / asof / overview）
 

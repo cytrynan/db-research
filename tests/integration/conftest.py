@@ -38,6 +38,8 @@ def clean_db(dsn: str) -> Iterator[str]:
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
         cur.execute("TRUNCATE document CASCADE")
+        # summary は FK を持たない（target_key は文字列）ので別に空にする
+        cur.execute("TRUNCATE summary")
     yield dsn
 
 

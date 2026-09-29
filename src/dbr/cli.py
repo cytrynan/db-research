@@ -207,10 +207,13 @@ def ask(
     k: Annotated[int, typer.Option("--k")] = 5,
     model: Annotated[str, typer.Option("--model")] = "intfloat/multilingual-e5-small",
     reranker: RerankerOpt = DEFAULT_RERANKER_NAME,
+    at: Annotated[
+        str | None, typer.Option("--at", help="時点（YYYY-MM-DD / YYYY-MM）。asof 用")
+    ] = None,
     dsn: DsnOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
-    """型判定 → 該当する道具で答える（find=検索 / count=ビュー / 他=未実装）."""
+    """型判定 → 該当する道具で答える（find / count / asof / overview）."""
     from dbr.features.classify import RuleClassifier
     from dbr.features.count import VIEWS, ask_view
     from dbr.features.search import MODES, NoEmbeddings, dedupe_by_document, search
@@ -282,8 +285,50 @@ def ask(
         for r in rows:
             typer.echo("  " + "  ".join(f"{k2}={v}" for k2, v in r.items()))
         return
+    if resolved == "asof":
+        from dbr.features.asof import as_of, history, parse_at
+
+        at_dt = parse_at(at) if at else parse_at(question)
+        if at and at_dt is None:
+            typer.echo("--at は YYYY-MM-DD か YYYY-MM", err=True)
+            raise typer.Exit(code=2)
+        try:
+            facts = (
+                as_of(question, at_dt, dsn=resolve_dsn(dsn), k=k)
+                if at_dt
+                else history(question, dsn=resolve_dsn(dsn), k=max(k, 10))
+            )
+        except LoopbackViolation as exc:
+            raise _exit_on_loopback(exc) from None
+        out["at"] = at_dt.date().isoformat() if at_dt else None
+        out["facts"] = [
+            {
+                "date": f.valid_from.date().isoformat(),
+                "until": f.valid_to.date().isoformat() if f.valid_to else None,
+                "doc": f.doc_key,
+                "subject": f.subject,
+                "excerpt": f.value[:120],
+                "source": f.valid_source,
+            }
+            for f in facts
+        ]
+        if as_json:
+            typer.echo(json.dumps(out, ensure_ascii=False))
+            return
+        head = f"時点 {out['at']} の事実" if at_dt else "履歴（古い順）"
+        typer.echo(f"[{resolved}] {c.reason} / {head}")
+        if not facts:
+            typer.echo("  該当する記録なし")
+        for f in facts:
+            until = f" 〜 {f.valid_to.date().isoformat()}" if f.valid_to else ""
+            flag = "（暫定）" if f.valid_source == "inferred" else ""
+            typer.echo(
+                f"  {f.valid_from.date().isoformat()}{until}{flag}  {f.doc_key}\n"
+                f"      {f.value[:120]}"
+            )
+        return
     typer.echo(
-        f"[{resolved}] {c.reason} / この型はまだ実装していません（次の作業単位）"
+        f"[{resolved}] {c.reason} / この型はまだ実装していません（次のフェーズ）"
     )
 
 
@@ -403,6 +448,34 @@ def reindex(
     except LoopbackViolation as exc:
         raise _exit_on_loopback(exc) from None
     typer.echo(f"lexemes 更新 {n} 断片（{bundle}）")
+
+
+@app.command()
+def facts(
+    bundle: Annotated[str, typer.Option("--bundle")],
+    dsn: DsnOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """③ 時点: 取り込み済み断片から日付つきの事実を抽出して fact 表へ（冪等）."""
+    from dbr.features.ingest import BUNDLES
+    from dbr.features.ingest.facts import run_facts
+
+    if bundle not in BUNDLES:
+        typer.echo(f"--bundle は {sorted(BUNDLES)} のいずれか", err=True)
+        raise typer.Exit(code=2)
+    try:
+        report = run_facts(bundle, resolve_dsn(dsn))
+    except LoopbackViolation as exc:
+        raise _exit_on_loopback(exc) from None
+    if as_json:
+        typer.echo(json.dumps(report.to_dict(), ensure_ascii=False))
+    else:
+        d = report.to_dict()
+        typer.echo(
+            f"explicit {d['explicit']} / dated_text {d['dated_text']} / "
+            f"inferred {d['inferred']} / 日付なしで置けず {d['skipped_no_date']}"
+            f"（{bundle}）"
+        )
 
 
 if __name__ == "__main__":
