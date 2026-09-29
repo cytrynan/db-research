@@ -116,7 +116,12 @@ def vector_search_vec(
             SQL_INDEX if force_index else SQL,
             _params(q, variant, model, bundles, limit),
         )
-        return [dict(r) for r in cur.fetchall()]
+        rows = [dict(r) for r in cur.fetchall()]
+    if force_index:
+        # enable_sort=off と relaxed_order の組では外側の ORDER BY が保証されない
+        # （受入検証で limit=500 のとき順序の崩れを観測）。返す前にスコア降順に揃える
+        rows.sort(key=lambda r: (-float(str(r["score"])), int(str(r["chunk_id"]))))
+    return rows
 
 
 def vector_search(

@@ -43,6 +43,36 @@ def test_dedupe_keeps_best_chunk_per_document() -> None:
     assert [h.chunk_id for h in deduped] == [1, 3]
 
 
+class _RecordingReranker:
+    """並べ直し器が受け取った文字列を記録するダミー（入力の形を直接観測する）."""
+
+    name = "recording"
+
+    def __init__(self) -> None:
+        self.seen: list[list[str]] = []
+
+    def score(self, query: str, passages: list[str]) -> list[float]:
+        self.seen.append(passages)
+        return [float(len(p)) for p in passages]  # 長い方を上に
+
+
+def test_rerank_input_is_context_plus_body_and_tail_is_kept() -> None:
+    from dbr.features.search import _rerank
+
+    hits = [
+        Hit(1, "dev", "a.md", "", "b1", 0.9, "both", "c1"),
+        Hit(2, "dev", "b.md", "", "body-long-2", 0.8, "fts", None),
+        Hit(3, "dev", "c.md", "", "b3", 0.7, "embed", "c3"),
+    ]
+    rr = _RecordingReranker()
+    out = _rerank("q", hits, rr, top=2)
+    assert rr.seen == [
+        ["c1\nb1", "body-long-2"]
+    ]  # context + "\\n" + body / 無ければ body
+    assert [h.chunk_id for h in out] == [2, 1, 3]  # 上位 2 件を並べ直し、3 は末尾に残る
+    assert [h.source for h in out] == ["rerank", "rerank", "embed"]
+
+
 def test_weighted_rrf_matches_hand_calculation() -> None:
     # 列A 重み 0.5 / 列B 重み 1.0
     fused = dict(rrf([["x", "y"], ["y", "z"]], k=60, weights=[0.5, 1.0]))

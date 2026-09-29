@@ -107,6 +107,10 @@ def test_hnsw_overlap_and_markdown() -> None:
     assert overlap_at_k([1, 2, 3, 4], [1, 2, 9, 8], 4) == 0.5
     assert overlap_at_k([1, 2], [1, 2], 2) == 1.0
     assert overlap_at_k([], [1], 1) == 0.0
+    assert (
+        overlap_at_k([1, 2, 3], [1, 2, 3], 5) == 1.0
+    )  # 厳密が k 件未満なら分母はその件数
+    assert overlap_at_k([1], [], 5) == 0.0
     with pytest.raises(ValueError):
         overlap_at_k([1], [1], 0)
     result = {
@@ -134,7 +138,7 @@ def test_result_path_label_rules(tmp_path: Path) -> None:
     labeled = result_path(tmp_path, "find", "v5")
     assert plain.name.endswith("-find.json") and labeled.name.endswith("-find-v5.json")
     assert plain != labeled
-    for bad in ["", "a/b", "..", "日本語", "x" * 33, "v 5"]:
+    for bad in ["", "a/b", "..", "日本語", "x" * 33, "v 5", "v5\n", "x" * 32 + "\n"]:
         with pytest.raises(ValueError):
             result_path(tmp_path, "find", bad)
     p = save_json({"a": 1}, tmp_path, "find", "v5")

@@ -31,11 +31,16 @@ def _ids(rows: list[dict[str, Any]]) -> list[int]:
 
 
 def overlap_at_k(approx: list[int], exact: list[int], k: int) -> float:
-    """上位 k の集合一致率（厳密結果を正とした recall@k）."""
+    """上位 k の集合一致率（厳密結果を正とした recall@k）.
+
+    分母は厳密結果の件数（k 件未満でも 1.0 になり得る）。厳密結果が空なら 0.0。
+    """
     if k <= 0:
         raise ValueError("k は正")
-    a, e = set(approx[:k]), set(exact[:k])
-    return len(a & e) / k
+    e = set(exact[:k])
+    if not e:
+        return 0.0
+    return len(set(approx[:k]) & e) / len(e)
 
 
 def _timed(fn: Any) -> tuple[Any, float]:
@@ -131,7 +136,10 @@ def run_hnsw(
                 limit=k,
                 force_index=True,
             )
-            result["index_used_when_forced"] = "Index Scan" in result["explain_forced"]
+            # "Index Scan" は chunk_pkey / document_pkey でも真になる → 索引名で判定
+            result["index_used_when_forced"] = (
+                "chunk_embedding_hnsw" in result["explain_forced"]
+            )
     return result
 
 

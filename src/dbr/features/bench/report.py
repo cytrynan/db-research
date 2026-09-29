@@ -35,7 +35,8 @@ LABEL_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 def result_path(out_dir: Path, kind: str, label: str | None = None) -> Path:
     """`YYYYMMDD-<kind>[-<label>].json`。label はファイル名に入るので語彙を限定する."""
-    if label is not None and not LABEL_RE.match(label):
+    # `.match` + `$` は末尾改行の前でも一致し "v5\n" が通る（受入検証で反例）→ fullmatch
+    if label is not None and not LABEL_RE.fullmatch(label):
         raise ValueError("label は [A-Za-z0-9_-]{1,32}")
     day = datetime.now().strftime("%Y%m%d")
     suffix = f"-{label}" if label else ""

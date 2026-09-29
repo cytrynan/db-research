@@ -330,7 +330,7 @@ def bench(
     if kind not in {"find", "sweep", "hnsw"}:
         typer.echo("--kind は find | sweep | hnsw", err=True)
         raise typer.Exit(code=2)
-    if label is not None and not LABEL_RE.match(label):
+    if label is not None and not LABEL_RE.fullmatch(label):
         typer.echo("--label は [A-Za-z0-9_-]{1,32}", err=True)
         raise typer.Exit(code=2)
     qs = load_questions(questions)

@@ -99,7 +99,7 @@ def _rerank(question: str, hits: list[Hit], reranker: Reranker, top: int) -> lis
     order = sorted(
         zip(head, scores, strict=True), key=lambda hs: (-hs[1], hs[0].chunk_id)
     )
-    return [
+    reranked = [
         Hit(
             h.chunk_id,
             h.bundle,
@@ -112,6 +112,8 @@ def _rerank(question: str, hits: list[Hit], reranker: Reranker, top: int) -> lis
         )
         for h, s in order
     ]
+    # 並べ直しの対象外（top 以降）は融合順のまま後ろに残す。k > top でも k 件返せる
+    return reranked + hits[top:]
 
 
 def search(
