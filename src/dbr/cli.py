@@ -304,7 +304,9 @@ def _guess_view(question: str) -> str | None:
 @app.command()
 def bench(
     kind: Annotated[str, typer.Option("--kind")] = "find",
-    modes: Annotated[str, typer.Option("--modes")] = "fts,embed,hybrid,hybrid_ctx",
+    modes: Annotated[str, typer.Option("--modes")] = (
+        "fts,embed,embed_ctx,hybrid,hybrid_ctx,hybrid_ctx_rerank"
+    ),
     questions: Annotated[Path, typer.Option("--questions")] = REPO_ROOT
     / "docs"
     / "questions.md",

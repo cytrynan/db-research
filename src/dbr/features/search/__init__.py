@@ -12,7 +12,10 @@ from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
 
-Mode = Literal["embed", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank"]
+Mode = Literal[
+    "embed", "embed_ctx", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank"
+]  # fmt: skip
+# embed_ctx: 文脈付き埋め込みだけ（融合なし）。sweep で w_fts=0 が最良だったので追加
 MODES: tuple[str, ...] = get_args(Mode)
 CANDIDATES = 100  # 各系の一次取得件数（既定）
 RERANK_TOP = 150  # 並べ直しに渡す融合上位の件数
@@ -144,17 +147,18 @@ def search(
         if embedder is None:
             raise ValueError("embed / hybrid には embedder が必要")
         variant = "plain" if mode in ("embed", "hybrid") else "ctx"
+        embed_only = mode in ("embed", "embed_ctx")
         vrows = vector_search(
             conn,
             question,
             embedder=embedder,
             variant=variant,
-            limit=k if mode == "embed" else n_cand,
+            limit=k if embed_only else n_cand,
             ef_search=ef_search,
             bundles=bundles,
             force_index=force_index,
         )
-        if mode == "embed":
+        if embed_only:
             return [_hit(r, "embed") for r in vrows]
         frows = fts_search(conn, question, limit=n_cand, bundles=bundles)
     fused = _fuse(frows, vrows, weights)

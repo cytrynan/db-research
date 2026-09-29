@@ -16,7 +16,10 @@ uv run dbr ingest ~/.agents/knowledge/dev --bundle dev   # OKF フォルダを�
 uv run dbr count v_by_bundle    # ② 数える: 定義済みビュー（v_by_bundle / v_by_type / v_unverified / v_stale）
 uv run dbr embed --bundle dev --variant plain   # 埋め込み（ローカル e5-small・CPU・冪等）。--variant ctx で文脈付き
 uv run dbr ask "メガネの度数どこに書いた？"     # 型判定 → find なら検索（--mode fts|embed|hybrid|hybrid_ctx）
-uv run dbr bench --kind find    # find 10 問 × 4 方式の recall@5 / recall@20 / MRR（結果: docs/bench-results.md）
+uv run dbr bench --kind find    # find 10 問 × 6 方式（並べ直し込み）の recall@5 / recall@20 / MRR（結果: docs/bench-results.md）
+uv run dbr bench --kind sweep   # RRF の fts 重み × 候補数の掃引（hybrid_ctx）
+uv run dbr bench --kind hnsw    # HNSW を強制して ef_search 40/100/250 の recall（厳密比）とレイテンシ
+uv run dbr ask "..." --mode hybrid_ctx_rerank   # ローカル cross-encoder で並べ直し
 uv run dbr reindex --bundle dev # 分かち書き規則を変えたとき lexemes だけ再計算
 uv run pytest                   # ユニット / uv run pytest -m db で統合（Docker 必須）
 ```
