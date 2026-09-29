@@ -2,23 +2,36 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Literal, get_args
 
 from dbr.features.search.fts import fts_search
-from dbr.features.search.fuse import rrf
+from dbr.features.search.fuse import DEFAULT_K, rrf
 from dbr.features.search.vector import NoEmbeddings, vector_search
 from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
 
 Mode = Literal[
-    "embed", "embed_ctx", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank"
-]  # fmt: skip
+    "embed",
+    "embed_ctx",
+    "fts",
+    "hybrid",
+    "hybrid_ctx",
+    "hybrid_ctx_rerank",
+    "embed_ctx_rerank",
+]
 # embed_ctx: 文脈付き埋め込みだけ（融合なし）。sweep で w_fts=0 が最良だったので追加
+# embed_ctx_rerank: 文脈付き埋め込みの候補だけを並べ直す（全文検索を混ぜない。
+#   hybrid_ctx_rerank は fts 由来の候補ノイズで Q02/Q06 を落とした＝v5）
 MODES: tuple[str, ...] = get_args(Mode)
+Agg = Literal["max", "rrf_all", "rrf_top3"]
+AGGS: tuple[str, ...] = get_args(Agg)
 CANDIDATES = 100  # 各系の一次取得件数（既定）
-RERANK_TOP = 150  # 並べ直しに渡す融合上位の件数
+RERANK_TOP = 150  # hybrid_ctx_rerank: 並べ直しに渡す融合上位の件数
+# embed_ctx_rerank: 並べ直す埋め込み候補の件数。v8 tune で 20 が最良（10/15 は Q08 が
+# 窓に入らず、30 以上は Q06 を落とす）。N=10 の 1 問差なので暫定（D-14）
+RERANK_TOP_EMBED = 20
 
 
 @dataclass(frozen=True)
@@ -51,8 +64,39 @@ def _hit(row: dict[str, Any], source: str, score: float | None = None) -> Hit:
     )
 
 
+def aggregate_by_document(hits: list[Hit], method: str = "max") -> list[Hit]:
+    """断片の順位列を文書の順位列にする（順位ベース・モード非依存・決定的）.
+
+    - max: 最良断片の順位（dedupe_by_document と同値）
+    - rrf_all: 文書スコア = Σ_{その文書の全断片} 1/(60 + 断片順位)
+    - rrf_top3: 同じ和を文書ごとの上位 3 断片まで
+    返す Hit は代表＝最良断片。score は max なら断片スコアのまま、rrf 系は文書スコア。
+    同点は最良断片の順位が小さい方が先（安定）。
+    """
+    if method not in AGGS:
+        raise ValueError(f"agg は {AGGS} のいずれか")
+    if method == "max":
+        return dedupe_by_document(hits)
+    limit = 3 if method == "rrf_top3" else None
+    best: dict[str, Hit] = {}
+    best_rank: dict[str, int] = {}
+    score: dict[str, float] = {}
+    count: dict[str, int] = {}
+    for rank, h in enumerate(hits, start=1):
+        key = h.doc_key
+        if key not in best:
+            best[key] = h
+            best_rank[key] = rank
+        n = count.get(key, 0)
+        if limit is None or n < limit:
+            score[key] = score.get(key, 0.0) + 1.0 / (DEFAULT_K + rank)
+            count[key] = n + 1
+    order = sorted(best, key=lambda d: (-score[d], best_rank[d]))
+    return [replace(best[d], score=score[d]) for d in order]
+
+
 def dedupe_by_document(hits: list[Hit]) -> list[Hit]:
-    """同じ文書の最良チャンクだけ残す（文書単位の順位を測るため）."""
+    """同じ文書の最良チャンクだけ残す（文書単位の順位を測るため）＝aggregate の max."""
     seen: set[str] = set()
     out: list[Hit] = []
     for h in hits:
@@ -128,19 +172,22 @@ def search(
     candidates: int | None = None,
     weights: tuple[float, float] | None = None,
     reranker: Reranker | None = None,
-    rerank_top: int = RERANK_TOP,
+    rerank_top: int | None = None,
     force_index: bool = False,
 ) -> list[Hit]:
     """方式ごとに検索する.
 
     - candidates: hybrid 系の各系一次取得件数（既定 max(100, k)）
     - weights: RRF の (fts, embed) 重み。既定は等重み
-    - reranker / rerank_top: hybrid_ctx_rerank で使う並べ直し器と対象件数
+    - reranker / rerank_top: 並べ直し器と対象件数。rerank_top 省略時はモード別既定
+      （hybrid_ctx_rerank=RERANK_TOP=150、embed_ctx_rerank=RERANK_TOP_EMBED=20）
     - force_index: ベクトル検索で HNSW 索引を強制（ef_search 実験用）
     """
     if mode not in MODES:
         raise ValueError(f"mode は {MODES} のいずれか")
     n_cand = candidates if candidates is not None else max(CANDIDATES, k)
+    if rerank_top is None:
+        rerank_top = RERANK_TOP_EMBED if mode == "embed_ctx_rerank" else RERANK_TOP
     conn = connect(dsn)
     with conn:
         if mode == "fts":
@@ -149,19 +196,29 @@ def search(
         if embedder is None:
             raise ValueError("embed / hybrid には embedder が必要")
         variant = "plain" if mode in ("embed", "hybrid") else "ctx"
-        embed_only = mode in ("embed", "embed_ctx")
+        if mode in ("embed", "embed_ctx"):
+            limit = k
+        elif mode == "embed_ctx_rerank":
+            limit = max(rerank_top, k)  # 並べ直す候補は埋め込みだけから取る
+        else:
+            limit = n_cand
         vrows = vector_search(
             conn,
             question,
             embedder=embedder,
             variant=variant,
-            limit=k if embed_only else n_cand,
+            limit=limit,
             ef_search=ef_search,
             bundles=bundles,
             force_index=force_index,
         )
-        if embed_only:
+        if mode in ("embed", "embed_ctx"):
             return [_hit(r, "embed") for r in vrows]
+        if mode == "embed_ctx_rerank":
+            if reranker is None:
+                raise ValueError("embed_ctx_rerank には reranker が必要")
+            embed_hits = [_hit(r, "embed") for r in vrows]
+            return _rerank(question, embed_hits, reranker, rerank_top)[:k]
         frows = fts_search(conn, question, limit=n_cand, bundles=bundles)
     fused = _fuse(frows, vrows, weights)
     if mode == "hybrid_ctx_rerank":
@@ -172,12 +229,15 @@ def search(
 
 
 __all__ = [
+    "AGGS",
     "CANDIDATES",
     "MODES",
     "RERANK_TOP",
+    "RERANK_TOP_EMBED",
     "Hit",
     "Mode",
     "NoEmbeddings",
+    "aggregate_by_document",
     "dedupe_by_document",
     "search",
 ]

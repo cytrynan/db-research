@@ -8,6 +8,9 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — v8 節（embed_ctx_rerank・文書集約 3 種・rerank_top 10〜150 の格子。並べ直し器は Q02/Q06 を落とす／rrf_top3 は損なしで MRR 0.807→0.861／rerank_top 20 は 1 問依存で脆い）と総括の ① 行を更新 (kuroko/claude-fable-5-1)
+* **Update**: [決定台帳](decisions.md) — D-14: ① 探し物の既定＝embed_ctx＋rrf_top3（暫定・N=10）。並べ直しは既定にしない (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — Search(F3) に embed_ctx_rerank・文書集約 Agg・`ask` の既定（D-14）を追記 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — ② v7 節に判定器の修正（count bench に正解ビュー照合 view_ok／all_views_ok・再測定 4/4 一致）を追記 (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — 受入検証 R6: Fact 制約「旧行の valid_to を閉じて新行を挿入・削除しない」を実装どおり（bundle 単位の全削除→再挿入）に訂正、Temporal 節に dated_text、Overview に陳腐化検知の範囲 (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — `v_verified` は deprecated も数える（`v_unverified` とは補集合でない）ことを明記（受入検証の境界ケースより） (kuroko/claude-fable-5-1)

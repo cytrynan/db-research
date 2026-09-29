@@ -82,6 +82,49 @@ def test_rerank_mode_is_deterministic_and_uses_context(clean_db: str) -> None:
         search("x", mode="hybrid_ctx_rerank", dsn=clean_db, embedder=fake)
 
 
+def test_embed_ctx_rerank_uses_only_embedding_candidates(
+    clean_db: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import dbr.features.search as sm
+    from dbr.shared.rerank import get_reranker
+
+    run(FIXTURES / "kuroko", "memory", clean_db, log=lambda _m: None)
+    fake = get_embedder("fake")
+    run_embed("memory", "ctx", clean_db, fake)
+    rr = get_reranker("fake")
+
+    def boom(*_a: object, **_k: object) -> list[dict[str, object]]:
+        raise AssertionError("embed_ctx_rerank は全文検索を呼ばない")
+
+    monkeypatch.setattr(sm, "fts_search", boom)
+    a = search(
+        "規約外キー", mode="embed_ctx_rerank", dsn=clean_db, k=5, embedder=fake,
+        reranker=rr, rerank_top=3,
+    )  # fmt: skip
+    b = search(
+        "規約外キー", mode="embed_ctx_rerank", dsn=clean_db, k=5, embedder=fake,
+        reranker=rr, rerank_top=3,
+    )  # fmt: skip
+    assert [h.chunk_id for h in a] == [h.chunk_id for h in b] and len(a) == 5
+    assert [h.source for h in a] == ["rerank"] * 3 + [
+        "embed"
+    ] * 2  # 上位 3 だけ並べ直し
+    assert all(h.context is not None for h in a[:3])
+    with pytest.raises(ValueError):
+        search("x", mode="embed_ctx_rerank", dsn=clean_db, embedder=fake)
+    # rerank_top 省略時はモード別既定（embed_ctx_rerank は RERANK_TOP_EMBED=20）
+    c = search(
+        "規約外キー",
+        mode="embed_ctx_rerank",
+        dsn=clean_db,
+        k=30,
+        embedder=fake,
+        reranker=rr,
+    )
+    assert c and all(h.source == "rerank" for h in c[: min(20, len(c))])
+    assert all(h.source == "embed" for h in c[20:])
+
+
 def test_forced_index_plan_uses_hnsw(clean_db: str) -> None:
     from dbr.features.search.vector import explain_vector_search, vector_literal
     from dbr.shared.db import connect

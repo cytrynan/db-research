@@ -1,0 +1,457 @@
+{
+  "date": "2026-09-29",
+  "ef_search": 40,
+  "git_sha": "4096c50-dirty",
+  "kind": "find",
+  "model": "intfloat/multilingual-e5-small",
+  "modes": {
+    "embed_ctx": {
+      "mrr": 0.8071428571428572,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/INDEX.md",
+            "references/home.md",
+            "references/workout.md",
+            "references/profile.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/log.md",
+            "memory/norm-enforcement-by-mechanism.md",
+            "dev/blender-modeling.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/home.md",
+            "dev/agent-orchestration.md",
+            "references/log.md",
+            "dev/tts-selection.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 2,
+          "top5": [
+            "references/fuyou.md",
+            "references/work.md",
+            "references/log.md",
+            "memory/baito-wage-tool.md",
+            "memory/log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "memory/career-target-fde.md",
+            "dev/tech-radar.md",
+            "references/profile.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/home.md",
+            "dev/judge-design.md",
+            "references/log.md",
+            "dev/experiment-design.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "dev/agent-orchestration-log.md",
+            "dev/recording.md",
+            "memory/feedback-primary-source-research.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 14,
+          "top5": [
+            "references/home.md",
+            "memory/disallowed-tools-verify-harness.md",
+            "dev/slack-trigger-headless-claude.md",
+            "references/company-local-llm.md",
+            "dev/ui-design-anti-slop.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 2,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "references/fuyou.md",
+            "references/university.md",
+            "memory/career-target-fde.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "memory/fuyou-line-118man.md",
+            "memory/fuyou-line-150man.md",
+            "references/work.md",
+            "references/log.md"
+          ]
+        }
+      ],
+      "recall@20": 1.0,
+      "recall@5": 0.9
+    },
+    "embed_ctx_rerank": {
+      "mrr": 0.7366666666666666,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/INDEX.md",
+            "references/home.md",
+            "references/devices.md",
+            "references/preferences.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 6,
+          "top5": [
+            "memory/plugin-marketplaces.md",
+            "dev/log/2026-08-4.md",
+            "dev/pending-proposals.md",
+            "dev/agent-orchestration.md",
+            "dev/agent-orchestration-log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/INDEX.md",
+            "references/home.md",
+            "memory/plugin-marketplaces.md",
+            "dev/log/2026-08.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "dev/log/2026-08-4.md",
+            "references/log.md",
+            "memory/baito-wage-tool.md",
+            "references/fuyou.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "memory/career-target-fde.md",
+            "references/fuyou.md",
+            "memory/log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": null,
+          "top5": [
+            "dev/experiment-design.md",
+            "dev/log/2026-08-4.md",
+            "dev/scheduled-automation.md",
+            "dev/agent-orchestration-log.md",
+            "dev/mql5-mt5.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "dev/agent-orchestration-log.md",
+            "dev/recording.md",
+            "dev/tech-radar.md",
+            "dev/ai-development-architecture.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 5,
+          "top5": [
+            "dev/knowledge-sharing.md",
+            "references/company-local-llm.md",
+            "memory/archive/slack-vs-discord-platform.md",
+            "memory/disallowed-tools-verify-harness.md",
+            "references/tools.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/work.md",
+            "references/university.md",
+            "references/fuyou.md",
+            "dev/tech-radar.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "memory/fuyou-line-150man.md",
+            "memory/fuyou-line-118man.md",
+            "references/money.md",
+            "memory/okf-recording-adoption.md"
+          ]
+        }
+      ],
+      "recall@20": 0.9,
+      "recall@5": 0.8
+    },
+    "hybrid_ctx_rerank": {
+      "mrr": 0.7342857142857142,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/INDEX.md",
+            "references/home.md",
+            "references/devices.md",
+            "dev/log/2026-08-4.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 5,
+          "top5": [
+            "memory/plugin-marketplaces.md",
+            "dev/log/2026-08-4.md",
+            "dev/pending-proposals.md",
+            "dev/agent-orchestration.md",
+            "references/health.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/INDEX.md",
+            "references/home.md",
+            "dev/recording.md",
+            "memory/plugin-marketplaces.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/log.md",
+            "memory/baito-wage-tool.md",
+            "references/fuyou.md",
+            "references/INDEX.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "memory/career-target-fde.md",
+            "references/fuyou.md",
+            "dev/agent-orchestration.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": null,
+          "top5": [
+            "dev/recording.md",
+            "dev/agent-orchestration-log.md",
+            "dev/experiment-design.md",
+            "dev/log/2026-08-4.md",
+            "dev/scheduled-automation.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "memory/sales-routine-two-mechanisms.md",
+            "dev/scheduled-automation.md",
+            "dev/recording.md",
+            "dev/headless-claude.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 7,
+          "top5": [
+            "dev/knowledge-sharing.md",
+            "dev/agent-orchestration-log.md",
+            "references/company-local-llm.md",
+            "memory/archive/slack-vs-discord-platform.md",
+            "memory/feedback-private-md-export-policy.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/work.md",
+            "references/university.md",
+            "references/fuyou.md",
+            "dev/pending-proposals.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "memory/fuyou-line-150man.md",
+            "memory/fuyou-line-118man.md",
+            "references/money.md",
+            "references/profile.md"
+          ]
+        }
+      ],
+      "recall@20": 0.9,
+      "recall@5": 0.8
+    }
+  },
+  "question_count": 10,
+  "reranker": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "skipped": [],
+  "sudachi_dict": "sudachidict_core==20260723.1"
+}

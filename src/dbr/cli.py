@@ -205,7 +205,10 @@ ASK_KINDS = ("auto", "find", "count", "asof", "overview")
 @app.command()
 def ask(
     question: Annotated[str, typer.Argument()],
-    mode: Annotated[str, typer.Option("--mode")] = "hybrid_ctx",
+    mode: Annotated[str, typer.Option("--mode")] = "embed_ctx",  # D-14（v8）
+    agg: Annotated[
+        str, typer.Option("--agg", help="find の文書集約 max | rrf_all | rrf_top3")
+    ] = "rrf_top3",  # D-14（v8）
     kind: Annotated[
         str, typer.Option("--kind", help="auto | find | count | asof | overview")
     ] = "auto",
@@ -222,7 +225,13 @@ def ask(
     from dbr.features.asof import parse_at_option
     from dbr.features.classify import RuleClassifier
     from dbr.features.count import VIEWS, ask_view
-    from dbr.features.search import MODES, NoEmbeddings, dedupe_by_document, search
+    from dbr.features.search import (
+        AGGS,
+        MODES,
+        NoEmbeddings,
+        aggregate_by_document,
+        search,
+    )
 
     # オプションの検査は型に関係なく先にやる（--kind bogus が overview に落ちない・
     # --at の書式は asof 以外でも exit 2。受入検証 D1）
@@ -249,10 +258,13 @@ def ask(
         if mode not in MODES:
             typer.echo(f"--mode は {MODES} のいずれか", err=True)
             raise typer.Exit(code=2)
+        if agg not in AGGS:
+            typer.echo(f"--agg は {AGGS} のいずれか", err=True)
+            raise typer.Exit(code=2)
         emb = None if mode == "fts" else _embedder_or_exit(model)
-        rr = _reranker_or_exit(reranker) if mode == "hybrid_ctx_rerank" else None
+        rr = _reranker_or_exit(reranker) if mode.endswith("_rerank") else None
         try:
-            hits = dedupe_by_document(
+            hits = aggregate_by_document(
                 search(
                     question,
                     mode=mode,  # type: ignore[arg-type]
@@ -260,7 +272,8 @@ def ask(
                     k=k * 5,
                     embedder=emb,
                     reranker=rr,
-                )
+                ),
+                agg,
             )[:k]
         except NoEmbeddings as exc:
             typer.echo(str(exc), err=True)
@@ -279,7 +292,7 @@ def ask(
         if as_json:
             typer.echo(json.dumps(out, ensure_ascii=False))
             return
-        typer.echo(f"[{resolved}] {c.reason} / mode={mode}")
+        typer.echo(f"[{resolved}] {c.reason} / mode={mode} / agg={agg}")
         for i, h in enumerate(hits, start=1):
             typer.echo(
                 f"{i:>2}. {h.doc_key}  §{h.heading_path or '-'}  "
@@ -402,7 +415,7 @@ def _guess_view(question: str) -> str | None:
 def bench(
     kind: Annotated[str, typer.Option("--kind")] = "find",
     modes: Annotated[str, typer.Option("--modes")] = (
-        "fts,embed,embed_ctx,hybrid,hybrid_ctx,hybrid_ctx_rerank"
+        "fts,embed,embed_ctx,hybrid,hybrid_ctx,hybrid_ctx_rerank,embed_ctx_rerank"
     ),
     questions: Annotated[Path, typer.Option("--questions")] = REPO_ROOT
     / "docs"
@@ -419,9 +432,16 @@ def bench(
         Path,
         typer.Option("--answers", help="overview の回答を書く Markdown（K が採点）"),
     ] = REPO_ROOT / "docs" / "overview-answers.md",
+    agg: Annotated[
+        str,
+        typer.Option("--agg", help="find の文書集約（既定 max＝v4〜v8 と比較可能）"),
+    ] = "max",
     dsn: DsnOpt = None,
 ) -> None:
-    """質問セットを流して指標を出す（--kind find|sweep|hnsw|count|asof|overview）."""
+    """質問セットを流して指標を出す.
+
+    --kind は find / sweep / hnsw / tune / count / asof / overview。
+    """
     from dbr.features.bench import load_questions, run_find, save_json, to_markdown
     from dbr.features.bench.asof import asof_markdown, run_asof
     from dbr.features.bench.count import count_markdown, run_count
@@ -429,13 +449,19 @@ def bench(
     from dbr.features.bench.overview import overview_markdown, run_overview
     from dbr.features.bench.report import LABEL_RE
     from dbr.features.bench.sweep import run_sweep, sweep_markdown
-    from dbr.features.search import MODES, NoEmbeddings
+    from dbr.features.bench.tune import run_tune, tune_markdown
+    from dbr.features.search import AGGS, MODES, NoEmbeddings
 
-    if kind not in {"find", "sweep", "hnsw", "count", "asof", "overview"}:
-        typer.echo("--kind は find | sweep | hnsw | count | asof | overview", err=True)
+    if kind not in {"find", "sweep", "hnsw", "tune", "count", "asof", "overview"}:
+        typer.echo(
+            "--kind は find | sweep | hnsw | tune | count | asof | overview", err=True
+        )
         raise typer.Exit(code=2)
     if label is not None and not LABEL_RE.fullmatch(label):
         typer.echo("--label は [A-Za-z0-9_-]{1,32}", err=True)
+        raise typer.Exit(code=2)
+    if agg not in AGGS:
+        typer.echo(f"--agg は {AGGS} のいずれか", err=True)
         raise typer.Exit(code=2)
     qs = load_questions(questions)
     log = lambda m: typer.echo(m, err=True)  # noqa: E731 - 1行の配線
@@ -449,7 +475,7 @@ def bench(
             emb = None if mode_list == ["fts"] else _embedder_or_exit(model)
             rr = (
                 _reranker_or_exit(reranker)
-                if "hybrid_ctx_rerank" in mode_list
+                if any(m.endswith("_rerank") for m in mode_list)
                 else None
             )
             result = run_find(
@@ -461,6 +487,7 @@ def bench(
                 repo=REPO_ROOT,
                 log=log,
                 reranker=rr,
+                agg=agg,
             )
             text = to_markdown(result)
         elif kind == "count":
@@ -492,6 +519,16 @@ def bench(
                 repo=REPO_ROOT,
             )
             text = sweep_markdown(result)
+        elif kind == "tune":
+            result = run_tune(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                reranker=_reranker_or_exit(reranker),
+                ef_search=ef_search,
+                repo=REPO_ROOT,
+            )
+            text = tune_markdown(result)
         else:
             result = run_hnsw(
                 qs,

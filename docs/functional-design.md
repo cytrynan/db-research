@@ -281,7 +281,8 @@ class LLMClassifier(Classifier): ...       # 4型の定義と例を渡して1語
 
 **インターフェース**:
 ```python
-Mode = Literal["embed", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank"]
+Mode = Literal["embed", "embed_ctx", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank", "embed_ctx_rerank"]
+Agg = Literal["max", "rrf_all", "rrf_top3"]   # 断片→文書の集約（順位ベース・2026-09-29）
 
 class Searcher:
     def search(self, q: str, *, mode: Mode, k: int = 20) -> list[Hit]: ...
@@ -294,6 +295,9 @@ class Searcher:
 - 統合: **RRF（Reciprocal Rank Fusion）** `score = Σ 1/(60 + rank_i)`。スコアの尺度が違う2系を混ぜるのに正規化が要らない
 - `hybrid_ctx`: 埋め込み側を `variant='ctx'` の子テーブルで検索
 - `hybrid_ctx_rerank`: 上位150件を並べ直し器（外部 API または cross-encoder）に通して上位20件
+- `embed_ctx_rerank`: 文脈付き埋め込みの候補 `max(rerank_top, k)` 件だけを並べ直す（既定 rerank_top=20・全文検索を混ぜない。2026-09-29）
+- **文書集約**（断片列→文書列）: `max`＝最良断片の順位、`rrf_top3`＝文書ごとの上位 3 断片の Σ1/(60+順位)（**既定・D-14**）、`rrf_all`＝全断片（断片の多い長い文書を持ち上げて崩れる＝v8）
+- **`ask` の既定**: mode=`embed_ctx`・agg=`rrf_top3`（D-14・2026-09-29・recall@5 0.90 / MRR 0.861）。それまでの既定 `hybrid_ctx` は v5 で 0.80 / 0.676
 
 ### Counter（F4・② 数える）
 

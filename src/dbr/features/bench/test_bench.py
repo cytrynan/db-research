@@ -165,3 +165,34 @@ def test_parse_row_extracts_count_view() -> None:
         "| Q11 | 何件？ | count | v_by_bundle | |"
     )  # バッククォート無しは拾わない
     assert q2 is not None and q2.views == ()
+
+
+def test_tune_markdown_shape() -> None:
+    from dbr.features.bench.tune import configs, tune_markdown
+
+    assert configs((20, 50)) == [
+        ("embed_ctx", None),
+        ("embed_ctx_rerank", 20),
+        ("embed_ctx_rerank", 50),
+    ]
+    result = {
+        "date": "2026-09-29",
+        "git_sha": "abc",
+        "model": "fake",
+        "reranker": "fake",
+        "question_count": 1,
+        "aggs": ["max", "rrf_all"],
+        "cells": [
+            {"mode": "embed_ctx", "rerank_top": None, "agg": a, "recall@5": 1.0,
+             "recall@20": 1.0, "mrr": 0.5, "ranks": {"Q01": 2}}
+            for a in ("max", "rrf_all")
+        ]
+        + [
+            {"mode": "embed_ctx_rerank", "rerank_top": 20, "agg": a, "recall@5": 0.0,
+             "recall@20": 1.0, "mrr": 0.1, "ranks": {"Q01": 10}}
+            for a in ("max", "rrf_all")
+        ],
+    }  # fmt: skip
+    md = tune_markdown(result)
+    assert "| embed_ctx | 1.00 / 0.500 | 1.00 / 0.500 |" in md
+    assert "| embed_ctx_rerank / 20 | 0.00 / 0.100 | 0.00 / 0.100 |" in md

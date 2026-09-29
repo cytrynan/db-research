@@ -78,7 +78,7 @@ def test_cli_bench_all_kinds_with_fake_models(clean_db: str, tmp_path: Path) -> 
     r = runner.invoke(
         app,
         ["bench", "--kind", "find",
-         "--modes", "fts,embed,hybrid,hybrid_ctx,hybrid_ctx_rerank",
+         "--modes", "fts,embed,hybrid,hybrid_ctx,hybrid_ctx_rerank,embed_ctx_rerank",
          "--reranker", "fake", *common],
     )  # fmt: skip
     assert r.exit_code == 0, r.output
@@ -90,8 +90,32 @@ def test_cli_bench_all_kinds_with_fake_models(clean_db: str, tmp_path: Path) -> 
         "hybrid",
         "hybrid_ctx",
         "hybrid_ctx_rerank",
+        "embed_ctx_rerank",
     }
-    assert data["reranker"] == "fake"
+    assert data["reranker"] == "fake" and data["agg"] == "max"
+    r = runner.invoke(
+        app,
+        [
+            "bench",
+            "--kind",
+            "find",
+            "--modes",
+            "embed_ctx",
+            "--agg",
+            "rrf_top3",
+            *common,
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    r = runner.invoke(app, ["bench", "--kind", "find", "--agg", "mean", *common])
+    assert r.exit_code == 2
+
+    r = runner.invoke(app, ["bench", "--kind", "tune", "--reranker", "fake", *common])
+    assert r.exit_code == 0, r.output
+    tune = json.loads(next(out.glob("*-tune-t.json")).read_text(encoding="utf-8"))
+    assert len(tune["cells"]) == 1 * 3 + 4 * 3  # embed_ctx 1 + rerank_top 4 → × agg 3
+    assert {c["agg"] for c in tune["cells"]} == {"max", "rrf_all", "rrf_top3"}
+    assert all(set(c["ranks"]) == {"Q01", "Q02"} for c in tune["cells"])
 
     r = runner.invoke(app, ["bench", "--kind", "sweep", *common])
     assert r.exit_code == 0, r.output
@@ -120,3 +144,17 @@ def test_cli_ask_rerank_mode_with_fake(clean_db: str) -> None:
     data = json.loads(r.output.strip().splitlines()[-1])
     assert data["kind"] == "find" and data["hits"]
     assert all(h["source"] == "rerank" for h in data["hits"])
+    r = CliRunner().invoke(
+        app,
+        ["ask", "規約外キーはどこに書いた？", "--mode", "embed_ctx_rerank", "--agg",
+         "rrf_top3", "--model", "fake", "--reranker", "fake", "--dsn", clean_db],
+    )  # fmt: skip
+    assert r.exit_code == 0 and "agg=rrf_top3" in r.output, r.output
+    r = CliRunner().invoke(
+        app, ["ask", "規約外キーはどこに書いた？", "--model", "fake", "--dsn", clean_db]
+    )  # 既定（D-14）: embed_ctx + rrf_top3
+    assert r.exit_code == 0 and "mode=embed_ctx / agg=rrf_top3" in r.output, r.output
+    r = CliRunner().invoke(
+        app, ["ask", "x", "--kind", "find", "--agg", "mean", "--dsn", clean_db]
+    )
+    assert r.exit_code == 2  # 語彙外の agg

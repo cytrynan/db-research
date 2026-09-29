@@ -10,7 +10,7 @@ from typing import Any
 from dbr.features.bench.metrics import mrr, rank_of, recall_at
 from dbr.features.bench.questions import Question, load_questions
 from dbr.features.bench.report import git_sha, save_json, to_markdown
-from dbr.features.search import Mode, dedupe_by_document, search
+from dbr.features.search import AGGS, Mode, aggregate_by_document, search
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
 from dbr.shared.text import dict_version
@@ -32,7 +32,10 @@ def run_find(
     repo: Path | None = None,
     log: Callable[[str], None] = print,
     reranker: Reranker | None = None,
+    agg: str = "max",
 ) -> dict[str, Any]:
+    if agg not in AGGS:
+        raise ValueError(f"agg は {AGGS} のいずれか")
     finds = [q for q in questions if q.kind == "find" and q.expected]
     # 正解パスが無い find 行は測れない。黙って母数から外さず、記録に残す
     skipped = [q.id for q in questions if q.kind == "find" and not q.expected]
@@ -50,12 +53,13 @@ def run_find(
         "question_count": len(finds),
         "skipped": skipped,
         "reranker": reranker.name if reranker else None,
+        "agg": agg,
         "modes": {},
     }
     for mode in modes:
         per: list[dict[str, Any]] = []
         for q in finds:
-            hits = dedupe_by_document(
+            hits = aggregate_by_document(
                 search(
                     q.text,
                     mode=mode,
@@ -64,7 +68,8 @@ def run_find(
                     embedder=embedder,
                     ef_search=ef_search,
                     reranker=reranker,
-                )
+                ),
+                agg,
             )[:DOC_K]
             keys = [h.doc_key for h in hits]
             per.append(
