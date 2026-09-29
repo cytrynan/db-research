@@ -8,6 +8,7 @@
 
 ## 2026-09-29
 
+* **Update**: [質問セット（20問）](questions.md) — asof 4 問（Q15〜Q18）の期待欄に正解日付をバッククォートで追記（bench --kind asof の採点用）。Q18 は memory バンドル前提 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — 受入検証の指摘を反映: sweep の説明文を訂正（「単調に下がる」は誤り・(0.5, 20) が最良と同点の 4 セル）、索引使用フラグの判定を索引名に変えた旨を注記 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v5 に embed_ctx（文脈付き埋め込み単体）を追加: recall@5 0.90 / MRR 0.811 で 6 方式中最良。並べ直し（0.751）は hybrid_ctx を改善するが単体に届かない (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v5 節を追加（並べ直し recall@5 0.90 / MRR 0.751、RRF 掃引で fts 重み 0＝文脈付き埋め込み単体が MRR 0.811 で最良、HNSW ef_search 40/100/250 の厳密比 0.93/0.985/1.0・速度差なし） (kuroko/claude-fable-5-1)

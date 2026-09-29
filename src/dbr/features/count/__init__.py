@@ -49,4 +49,18 @@ def ask_view(name: str, dsn: str) -> list[dict[str, Any]]:
         return [dict(r) for r in cur.fetchall()]
 
 
-__all__ = ["VIEWS", "UnknownAggregate", "ask_view", "sql_for"]
+def guess_view(question: str) -> str | None:
+    """② の質問 → ビュー名。語彙の固定対応だけ（LLM に SQL を書かせない）."""
+    q = question.lower()
+    if "verified" in q or "確認済" in q or "未確認" in q:
+        return "v_unverified"
+    if "stale" in q or "期限" in q:
+        return "v_stale"
+    if "type" in q or "種別" in q:
+        return "v_by_type"
+    if "ファイル" in q or "記録" in q or "件" in q:
+        return "v_by_bundle"
+    return None
+
+
+__all__ = ["VIEWS", "UnknownAggregate", "ask_view", "guess_view", "sql_for"]

@@ -19,15 +19,15 @@ tracking: #23
 
 ## フェーズ3: 全体（F6）
 
-- [~] 0009_summary.sql・`ingest/summarize.py`（抽出型 3 段・source_hash）・`features/overview`・`ask` の overview 分岐・統合テスト（3 段・冪等） (#26)
+- [x] 0009_summary.sql・`ingest/summarize.py`（抽出型 3 段・source_hash）・`features/overview`・`ask` の overview 分岐・統合テスト（3 段・冪等） (#26)
 
 ## フェーズ4: bench（count / asof / overview）
 
-- [ ] `bench/{count,asof,overview}.py`・`_guess_view` を count スライスへ移動・`questions.md` の期待欄に asof の日付・CLI `bench --kind count|asof|overview`・統合テスト（fake） (#27)
+- [x] `bench/{count,asof,overview}.py`・`_guess_view` を count スライスへ移動・`questions.md` の期待欄に asof の日付・CLI `bench --kind count|asof|overview`・統合テスト（fake） (#27)
 
 ## フェーズ5: 実データと品質ゲート
 
-- [ ] memory を取り込み・埋め込み（plain/ctx）→ references/dev/memory で `facts`・`summarize` → `bench --kind count|asof|overview` → JSON と `docs/overview-answers.md`・`docs/bench-results.md` に転記・ruff/mypy/pytest（unit・db） (#28)
+- [~] memory を取り込み・埋め込み（plain/ctx）→ references/dev/memory で `facts`・`summarize` → `bench --kind count|asof|overview` → JSON と `docs/overview-answers.md`・`docs/bench-results.md` に転記・ruff/mypy/pytest（unit・db） (#28)
 
 ## フェーズ6: 記録と受入検証
 

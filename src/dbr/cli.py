@@ -327,23 +327,44 @@ def ask(
                 f"      {f.value[:120]}"
             )
         return
-    typer.echo(
-        f"[{resolved}] {c.reason} / この型はまだ実装していません（次のフェーズ）"
+    # overview
+    from dbr.features.overview import answer as overview_answer
+
+    emb_ov = _embedder_or_exit(model)
+    try:
+        ov = overview_answer(question, dsn=resolve_dsn(dsn), embedder=emb_ov)
+    except LoopbackViolation as exc:
+        raise _exit_on_loopback(exc) from None
+    out.update(
+        {
+            "bundles": ov.bundles,
+            "bundle_summaries": ov.bundle_summaries,
+            "doc_summaries": ov.doc_summaries,
+            "evidence_ids": ov.evidence_ids,
+            "warnings": ov.warnings,
+        }
     )
+    if as_json:
+        typer.echo(json.dumps(out, ensure_ascii=False, default=str))
+        return
+    typer.echo(f"[{resolved}] {c.reason} / 対象 bundle: {', '.join(ov.bundles)}")
+    for b in ov.bundle_summaries:
+        typer.echo(f"\n■ {b['bundle']}（summary#{b['id']}）\n{b['text']}")
+    if ov.doc_summaries:
+        typer.echo("\n■ 質問に近い文書（上位）")
+        for d in ov.doc_summaries:
+            typer.echo(
+                f"- [{d['doc']}]（summary#{d['id']}）\n  "
+                + d["text"].replace("\n", "\n  ")
+            )
+    for w in ov.warnings:
+        typer.echo(f"WARN: {w}", err=True)
 
 
 def _guess_view(question: str) -> str | None:
-    """② の質問 → ビュー名。語彙の固定対応だけ（LLM に SQL を書かせない）."""
-    q = question.lower()
-    if "verified" in q or "確認済" in q or "未確認" in q:
-        return "v_unverified"
-    if "stale" in q or "期限" in q:
-        return "v_stale"
-    if "type" in q or "種別" in q:
-        return "v_by_type"
-    if "ファイル" in q or "記録" in q or "件" in q:
-        return "v_by_bundle"
-    return None
+    from dbr.features.count import guess_view
+
+    return guess_view(question)
 
 
 @app.command()
@@ -363,17 +384,24 @@ def bench(
         str | None,
         typer.Option("--label", help="ファイル名に付ける版ラベル [A-Za-z0-9_-]"),
     ] = None,
+    answers: Annotated[
+        Path,
+        typer.Option("--answers", help="overview の回答を書く Markdown（K が採点）"),
+    ] = REPO_ROOT / "docs" / "overview-answers.md",
     dsn: DsnOpt = None,
 ) -> None:
-    """質問セットを流して指標を JSON と表で出す（--kind find | sweep | hnsw）."""
+    """質問セットを流して指標を出す（--kind find|sweep|hnsw|count|asof|overview）."""
     from dbr.features.bench import load_questions, run_find, save_json, to_markdown
+    from dbr.features.bench.asof import asof_markdown, run_asof
+    from dbr.features.bench.count import count_markdown, run_count
     from dbr.features.bench.hnsw import hnsw_markdown, run_hnsw
+    from dbr.features.bench.overview import overview_markdown, run_overview
     from dbr.features.bench.report import LABEL_RE
     from dbr.features.bench.sweep import run_sweep, sweep_markdown
     from dbr.features.search import MODES, NoEmbeddings
 
-    if kind not in {"find", "sweep", "hnsw"}:
-        typer.echo("--kind は find | sweep | hnsw", err=True)
+    if kind not in {"find", "sweep", "hnsw", "count", "asof", "overview"}:
+        typer.echo("--kind は find | sweep | hnsw | count | asof | overview", err=True)
         raise typer.Exit(code=2)
     if label is not None and not LABEL_RE.fullmatch(label):
         typer.echo("--label は [A-Za-z0-9_-]{1,32}", err=True)
@@ -404,6 +432,21 @@ def bench(
                 reranker=rr,
             )
             text = to_markdown(result)
+        elif kind == "count":
+            result = run_count(qs, dsn=resolve_dsn(dsn), repo=REPO_ROOT)
+            text = count_markdown(result)
+        elif kind == "asof":
+            result = run_asof(qs, dsn=resolve_dsn(dsn), repo=REPO_ROOT)
+            text = asof_markdown(result)
+        elif kind == "overview":
+            result = run_overview(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                answers_path=answers,
+                repo=REPO_ROOT,
+            )
+            text = overview_markdown(result)
         elif kind == "sweep":
             result = run_sweep(
                 qs,
@@ -475,6 +518,32 @@ def facts(
             f"explicit {d['explicit']} / dated_text {d['dated_text']} / "
             f"inferred {d['inferred']} / 日付なしで置けず {d['skipped_no_date']}"
             f"（{bundle}）"
+        )
+
+
+@app.command()
+def summarize(
+    bundle: Annotated[str, typer.Option("--bundle")],
+    dsn: DsnOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """④ 全体: 抽出型の要約階層（bundle → document → section）を作り直す（冪等）."""
+    from dbr.features.ingest import BUNDLES
+    from dbr.features.ingest.summarize import run_summarize
+
+    if bundle not in BUNDLES:
+        typer.echo(f"--bundle は {sorted(BUNDLES)} のいずれか", err=True)
+        raise typer.Exit(code=2)
+    try:
+        report = run_summarize(bundle, resolve_dsn(dsn))
+    except LoopbackViolation as exc:
+        raise _exit_on_loopback(exc) from None
+    if as_json:
+        typer.echo(json.dumps(report.to_dict(), ensure_ascii=False))
+    else:
+        typer.echo(
+            f"section {report.sections} / document {report.documents} / "
+            f"bundle {report.bundles}（{bundle}）"
         )
 
 

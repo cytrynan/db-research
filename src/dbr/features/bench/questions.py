@@ -8,6 +8,9 @@ from pathlib import Path
 
 BUNDLE_PREFIX = r"(?:references|dev|stock|tax|scout|memory|experiments)"
 PATH_RE = re.compile(rf"`({BUNDLE_PREFIX}/[^`]+?\.md)`")
+DATE_RE = re.compile(
+    r"`(20\d{2}-\d{2}-\d{2})`"
+)  # asof の正解日付もバッククォートで書く
 ROW_RE = re.compile(r"^\|\s*(Q\d+)\s*\|")
 
 
@@ -17,6 +20,7 @@ class Question:
     text: str
     kind: str
     expected: tuple[str, ...]  # 'references/health.md' 形式（bundle/rel_path）
+    dates: tuple[str, ...] = ()  # asof の正解日付 'YYYY-MM-DD'
 
 
 def parse_row(line: str) -> Question | None:
@@ -26,7 +30,13 @@ def parse_row(line: str) -> Question | None:
     if len(cells) < 4:
         return None
     qid, text, kind, expected = cells[0], cells[1], cells[2], cells[3]
-    return Question(qid, text, kind, tuple(PATH_RE.findall(expected)))
+    return Question(
+        qid,
+        text,
+        kind,
+        tuple(PATH_RE.findall(expected)),
+        tuple(DATE_RE.findall(expected)),
+    )
 
 
 def load_questions(path: Path) -> list[Question]:

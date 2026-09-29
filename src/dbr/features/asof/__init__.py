@@ -62,6 +62,9 @@ SQL_ASOF = (
     + "ORDER BY score DESC, f.valid_from DESC, f.id\nLIMIT %(k)s\n"
 )
 SQL_HISTORY = _SELECT + "ORDER BY f.valid_from ASC, score DESC, f.id\nLIMIT %(k)s\n"
+SQL_HISTORY_BY_SCORE = (
+    _SELECT + "ORDER BY score DESC, f.valid_from ASC, f.id\nLIMIT %(k)s\n"
+)
 
 
 def _dt(v: object) -> datetime:
@@ -103,14 +106,23 @@ def as_of(
 
 
 def history(
-    question: str, *, dsn: str, bundles: list[str] | None = None, k: int = 20
+    question: str,
+    *,
+    dsn: str,
+    bundles: list[str] | None = None,
+    k: int = 20,
+    by: str = "date",
 ) -> list[FactHit]:
+    """関連する事実の履歴。by='date' は古い順（既定）、by='score' は関連度順."""
+    if by not in ("date", "score"):
+        raise ValueError("by は 'date' か 'score'")
     q = or_tsquery(question)
     if not q:
         return []
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
-        cur.execute(SQL_HISTORY, {"q": q, "bundles": bundles, "k": k})
+        sql = SQL_HISTORY if by == "date" else SQL_HISTORY_BY_SCORE
+        cur.execute(sql, {"q": q, "bundles": bundles, "k": k})
         return [_hit(dict(r)) for r in cur.fetchall()]
 
 

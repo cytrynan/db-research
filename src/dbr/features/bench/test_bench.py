@@ -20,6 +20,16 @@ def test_parse_row_extracts_backticked_paths_only() -> None:
     assert q.expected == ("references/fuyou.md",)
 
 
+def test_parse_row_extracts_dates_for_asof() -> None:
+    q = parse_row(
+        "| Q15 | いつ？ | asof | `references/INDEX.md` `2026-08-11`（分離） | |"
+    )
+    assert q is not None
+    assert q.expected == ("references/INDEX.md",) and q.dates == ("2026-08-11",)
+    q2 = parse_row("| Q01 | x | find | `dev/a.md` | |")
+    assert q2 is not None and q2.dates == ()
+
+
 def test_parse_row_multiple_paths_and_non_rows() -> None:
     q = parse_row(
         "| Q03 | x | find | `references/preferences.md`＋`references/home.md` §在庫 | |"
