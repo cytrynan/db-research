@@ -17,6 +17,13 @@ def test_date_verb_matches_heading_and_body_forms() -> None:
     assert DATE_VERB.search("扶養・年収の壁（2026-08-11　分離）")  # 全角スペース
     assert DATE_VERB.search("2026-08-25 算出") and DATE_VERB.search("2026-08-24停止")
     assert not DATE_VERB.search("2026-08-11 に行った")  # 動詞なし
+    assert DATE_VERB.search(
+        "⛔2026-08-24 A枠の能動営業停止（受注0）"
+    )  # 短い目的語を挟む
+    assert not DATE_VERB.search(
+        "2026-08-24 " + "x" * 25 + " 停止"
+    )  # 20 字を超えたら拾わない
+    assert not DATE_VERB.search("2026-08-24 途中\n停止")  # 行をまたがない
     assert parse_ymd("2026", "13", "40") is None  # 不正日付
 
 

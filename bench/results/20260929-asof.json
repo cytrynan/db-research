@@ -1,0 +1,163 @@
+{
+  "correct": 4,
+  "date": "2026-09-29",
+  "git_sha": "218d1bc-dirty",
+  "k": 3,
+  "kind": "asof",
+  "model": "intfloat/multilingual-e5-small",
+  "per_question": [
+    {
+      "at": null,
+      "candidate_docs": [
+        "references/fuyou.md",
+        "references/INDEX.md",
+        "dev/recording.md",
+        "references/log.md",
+        "memory/tax-law-mcp-installed.md"
+      ],
+      "correct": true,
+      "expected": [
+        "references/INDEX.md",
+        "references/fuyou.md"
+      ],
+      "expected_dates": [
+        "2026-08-11"
+      ],
+      "fallback_to_history": false,
+      "hits": [
+        {
+          "date": "2026-08-11",
+          "doc": "references/fuyou.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-08-01",
+          "doc": "references/INDEX.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-07-29",
+          "doc": "references/fuyou.md",
+          "source": "dated_text"
+        }
+      ],
+      "id": "Q15",
+      "scope": "chunks"
+    },
+    {
+      "at": "2026-07-31",
+      "candidate_docs": [
+        "references/work.md",
+        "references/career-roadmap.md",
+        "memory/career-target-fde.md",
+        "dev/log/2026-08-3.md",
+        "dev/log/2026-08.md"
+      ],
+      "correct": true,
+      "expected": [
+        "references/work.md"
+      ],
+      "expected_dates": [
+        "2026-08-10",
+        "2026-08-11"
+      ],
+      "fallback_to_history": true,
+      "hits": [
+        {
+          "date": "2026-08-11",
+          "doc": "references/work.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-08-11",
+          "doc": "references/work.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-08-11",
+          "doc": "references/career-roadmap.md",
+          "source": "dated_text"
+        }
+      ],
+      "id": "Q16",
+      "scope": "chunks"
+    },
+    {
+      "at": null,
+      "candidate_docs": [
+        "references/fuyou.md",
+        "memory/team-kuroko-plan.md",
+        "references/work.md",
+        "references/money.md",
+        "memory/feedback-primary-source-research.md"
+      ],
+      "correct": true,
+      "expected": [
+        "references/money.md"
+      ],
+      "expected_dates": [
+        "2026-07-26"
+      ],
+      "fallback_to_history": false,
+      "hits": [
+        {
+          "date": "2026-07-26",
+          "doc": "references/money.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-07-26",
+          "doc": "memory/team-kuroko-plan.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-07-26",
+          "doc": "references/money.md",
+          "source": "dated_text"
+        }
+      ],
+      "id": "Q17",
+      "scope": "chunks"
+    },
+    {
+      "at": "2026-09-30",
+      "candidate_docs": [
+        "memory/team-kuroko-plan.md",
+        "memory/sales-routine-two-mechanisms.md",
+        "dev/agent-orchestration-log.md",
+        "memory/log.md",
+        "dev/log/2026-08-4.md"
+      ],
+      "correct": true,
+      "expected": [
+        "memory/team-kuroko-plan.md",
+        "memory/sales-routine-two-mechanisms.md",
+        "references/money.md"
+      ],
+      "expected_dates": [
+        "2026-08-24"
+      ],
+      "fallback_to_history": false,
+      "hits": [
+        {
+          "date": "2026-08-24",
+          "doc": "memory/sales-routine-two-mechanisms.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-07-31",
+          "doc": "memory/sales-routine-two-mechanisms.md",
+          "source": "dated_text"
+        },
+        {
+          "date": "2026-07-31",
+          "doc": "memory/sales-routine-two-mechanisms.md",
+          "source": "dated_text"
+        }
+      ],
+      "id": "Q18",
+      "scope": "chunks"
+    }
+  ],
+  "question_count": 4
+}

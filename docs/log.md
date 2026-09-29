@@ -8,6 +8,10 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — v6 節（②count 4/4 stable・③asof 4/4＝断片→文書→全体の 2 段で到達、経緯 a〜e と正解欄の追加理由・INDEX と work.md の日付不整合の発見・④overview は K 採点待ち・20 問の総括） (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q15 の正解ファイルに `references/fuyou.md` を追加（同じ「2026-08-11 分離」の記録が fuyou.md 冒頭にもある。断片スコープの bench で先に返ったため） (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q16 の正解日付に `2026-08-10` を追加（work.md 本文の日付。INDEX.md の 2026-08-11 と食い違う＝記録の不整合を発見） (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q18 の正解ファイルに `memory/sales-routine-two-mechanisms.md` を追加（初回 bench でこのファイルの 2026-08-24 の事実が返り、内容が正しかった＝期待欄の網羅漏れ。変更理由を備考に明記） (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — asof 4 問（Q15〜Q18）の期待欄に正解日付をバッククォートで追記（bench --kind asof の採点用）。Q18 は memory バンドル前提 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — 受入検証の指摘を反映: sweep の説明文を訂正（「単調に下がる」は誤り・(0.5, 20) が最良と同点の 4 セル）、索引使用フラグの判定を索引名に変えた旨を注記 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v5 に embed_ctx（文脈付き埋め込み単体）を追加: recall@5 0.90 / MRR 0.811 で 6 方式中最良。並べ直し（0.751）は hybrid_ctx を改善するが単体に届かない (kuroko/claude-fable-5-1)

@@ -20,6 +20,11 @@ uv run dbr bench --kind find    # find 10 問 × 6 方式（並べ直し込み�
 uv run dbr bench --kind sweep   # RRF の fts 重み × 候補数の掃引（hybrid_ctx）
 uv run dbr bench --kind hnsw    # HNSW を強制して ef_search 40/100/250 の recall（厳密比）とレイテンシ
 uv run dbr ask "..." --mode hybrid_ctx_rerank   # ローカル cross-encoder で並べ直し
+uv run dbr facts --bundle references     # ③ 時点: 日付つきの事実を抽出（explicit / dated_text / inferred・冪等）
+uv run dbr summarize --bundle references # ④ 全体: 抽出型の要約階層（bundle→document→section・冪等）
+uv run dbr ask "収益目標を決めたのはいつ？"               # asof: 履歴（--at 2026-08 で時点指定）
+uv run dbr ask "references の記録は全体としてどう？"     # overview: bundle 要約＋近い文書の要約
+uv run dbr bench --kind count|asof|overview   # ②③④ の測定（overview は docs/overview-answers.md に回答を書き K が採点）
 uv run dbr reindex --bundle dev # 分かち書き規則を変えたとき lexemes だけ再計算
 uv run pytest                   # ユニット / uv run pytest -m db で統合（Docker 必須）
 ```

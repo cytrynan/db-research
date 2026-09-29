@@ -286,21 +286,29 @@ def ask(
             typer.echo("  " + "  ".join(f"{k2}={v}" for k2, v in r.items()))
         return
     if resolved == "asof":
-        from dbr.features.asof import as_of, history, parse_at
+        from dbr.features.asof import answer_asof, parse_at
 
-        at_dt = parse_at(at) if at else parse_at(question)
+        at_dt = parse_at(at) if at else None
         if at and at_dt is None:
             typer.echo("--at は YYYY-MM-DD か YYYY-MM", err=True)
             raise typer.Exit(code=2)
         try:
-            facts = (
-                as_of(question, at_dt, dsn=resolve_dsn(dsn), k=k)
-                if at_dt
-                else history(question, dsn=resolve_dsn(dsn), k=max(k, 10))
+            # ① 探し物で文書を絞ってから時間で絞る。無ければ全文書 → 履歴で補う
+            asof_ans = answer_asof(
+                question,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                at=at_dt,
+                k=k,
             )
         except LoopbackViolation as exc:
             raise _exit_on_loopback(exc) from None
+        facts = asof_ans.hits
+        at_dt = asof_ans.at
         out["at"] = at_dt.date().isoformat() if at_dt else None
+        out["candidate_docs"] = asof_ans.docs
+        out["scope"] = asof_ans.scope
+        out["fallback_to_history"] = asof_ans.fallback_to_history
         out["facts"] = [
             {
                 "date": f.valid_from.date().isoformat(),
@@ -315,8 +323,15 @@ def ask(
         if as_json:
             typer.echo(json.dumps(out, ensure_ascii=False))
             return
-        head = f"時点 {out['at']} の事実" if at_dt else "履歴（古い順）"
-        typer.echo(f"[{resolved}] {c.reason} / {head}")
+        head = f"時点 {out['at']} の事実" if at_dt else "履歴（関連度順）"
+        if asof_ans.fallback_to_history:
+            head += "（その時点の記録なし → 最初の記録を履歴から）"
+        scope = (
+            f"文書を絞った: {', '.join(asof_ans.docs)}"
+            if asof_ans.scope == "docs"
+            else "全文書"
+        )
+        typer.echo(f"[{resolved}] {c.reason} / {head} / {scope}")
         if not facts:
             typer.echo("  該当する記録なし")
         for f in facts:
@@ -436,7 +451,12 @@ def bench(
             result = run_count(qs, dsn=resolve_dsn(dsn), repo=REPO_ROOT)
             text = count_markdown(result)
         elif kind == "asof":
-            result = run_asof(qs, dsn=resolve_dsn(dsn), repo=REPO_ROOT)
+            result = run_asof(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                repo=REPO_ROOT,
+            )
             text = asof_markdown(result)
         elif kind == "overview":
             result = run_overview(

@@ -13,7 +13,11 @@ from dbr.shared.embed import Embedder
 
 
 def render_answer(a: OverviewAnswer) -> str:
-    parts = [f"【{b['bundle']}】{b['text']}" for b in a.bundle_summaries]
+    # bundle 要約は先頭行（件数・内訳）だけ。文書一覧（数十行）は根拠 id で辿れる
+    parts = [
+        f"【{b['bundle']}】{b['text'].split(chr(10))[0]}（全文は summary#{b['id']}）"
+        for b in a.bundle_summaries
+    ]
     if a.doc_summaries:
         parts.append(
             "【質問に近い文書】\n"

@@ -5,14 +5,18 @@ from __future__ import annotations
 import calendar
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from dbr.features.ingest.frontmatter import JST
+from dbr.features.search import Mode, NoEmbeddings, dedupe_by_document, search
 from dbr.features.search.fts import or_tsquery
 from dbr.shared.db import connect
+from dbr.shared.embed import Embedder
 
 AT_RE = re.compile(r"(20\d{2})-(\d{2})(?:-(\d{2}))?")
+# 「2026-08 より前」「2026-08-11 以前」→ その期間の直前の瞬間（期間自体は含めない）
+BEFORE_RE = re.compile(r"[ 　]*(より前|以前|より以前|までに)")
 
 
 @dataclass(frozen=True)
@@ -34,12 +38,20 @@ class FactHit:
 
 
 def parse_at(text: str) -> datetime | None:
-    """`YYYY-MM-DD` はその日の終わり、`YYYY-MM` は月末の終わり（JST）。無ければ None."""
+    """`YYYY-MM-DD` はその日の終わり、`YYYY-MM` は月末の終わり（JST）。無ければ None.
+
+    日付の直後に「より前」「以前」が続くときは、その日（月）の**始まりの直前**を返す。
+    """
     m = AT_RE.search(text)
     if not m:
         return None
     y, mo = int(m.group(1)), int(m.group(2))
+    before = BEFORE_RE.match(text, m.end()) is not None
     try:
+        if before:
+            d = int(m.group(3)) if m.group(3) else 1
+            start = datetime(y, mo, d, tzinfo=JST)
+            return start - timedelta(seconds=1)
         d = int(m.group(3)) if m.group(3) else calendar.monthrange(y, mo)[1]
         return datetime(y, mo, d, 23, 59, 59, tzinfo=JST)
     except ValueError:
@@ -55,6 +67,9 @@ JOIN document d ON d.id = f.document_id,
      to_tsquery('simple', %(q)s) q
 WHERE f.tsv @@ q
   AND (%(bundles)s::text[] IS NULL OR d.bundle = ANY(%(bundles)s::text[]))
+  AND (%(docs)s::text[] IS NULL
+       OR (d.bundle || '/' || d.rel_path) = ANY(%(docs)s::text[]))
+  AND (%(chunks)s::bigint[] IS NULL OR f.chunk_id = ANY(%(chunks)s::bigint[]))
 """
 SQL_ASOF = (
     _SELECT
@@ -94,14 +109,27 @@ def as_of(
     *,
     dsn: str,
     bundles: list[str] | None = None,
+    docs: list[str] | None = None,
+    chunks: list[int] | None = None,
     k: int = 5,
 ) -> list[FactHit]:
+    """時点 at に有効だった事実。docs（bundle/rel_path）や chunks（断片 id）で絞れる."""
     q = or_tsquery(question)
     if not q:
         return []
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
-        cur.execute(SQL_ASOF, {"q": q, "bundles": bundles, "at": at, "k": k})
+        cur.execute(
+            SQL_ASOF,
+            {
+                "q": q,
+                "bundles": bundles,
+                "docs": docs,
+                "chunks": chunks,
+                "at": at,
+                "k": k,
+            },
+        )
         return [_hit(dict(r)) for r in cur.fetchall()]
 
 
@@ -110,6 +138,8 @@ def history(
     *,
     dsn: str,
     bundles: list[str] | None = None,
+    docs: list[str] | None = None,
+    chunks: list[int] | None = None,
     k: int = 20,
     by: str = "date",
 ) -> list[FactHit]:
@@ -122,8 +152,90 @@ def history(
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
         sql = SQL_HISTORY if by == "date" else SQL_HISTORY_BY_SCORE
-        cur.execute(sql, {"q": q, "bundles": bundles, "k": k})
+        cur.execute(
+            sql, {"q": q, "bundles": bundles, "docs": docs, "chunks": chunks, "k": k}
+        )
         return [_hit(dict(r)) for r in cur.fetchall()]
 
 
-__all__ = ["AT_RE", "FactHit", "as_of", "history", "parse_at"]
+@dataclass
+class Scopes:
+    chunks: list[int]  # 質問に近い断片（上位 10）
+    docs: list[str]  # 質問に近い文書（上位 5）
+
+
+def candidate_scopes(
+    question: str,
+    *,
+    dsn: str,
+    embedder: Embedder | None,
+    n_chunks: int = 10,
+    n_docs: int = 5,
+) -> Scopes:
+    """① 探し物で質問に近い断片・文書を先に絞る（「何について」は探し物と同じ）."""
+    mode: Mode = "embed_ctx" if embedder is not None else "fts"
+    try:
+        hits = search(question, mode=mode, dsn=dsn, k=50, embedder=embedder)
+    except NoEmbeddings:
+        hits = search(question, mode="fts", dsn=dsn, k=50)
+    docs = [h.doc_key for h in dedupe_by_document(hits)[:n_docs]]
+    return Scopes(chunks=[h.chunk_id for h in hits[:n_chunks]], docs=docs)
+
+
+@dataclass
+class AsofAnswer:
+    at: datetime | None
+    docs: list[str]  # 文書の絞り込み候補（記録用）
+    scope: str  # 'chunks' | 'docs' | 'all'
+    fallback_to_history: bool
+    hits: list[FactHit]
+
+
+def answer_asof(
+    question: str,
+    *,
+    dsn: str,
+    embedder: Embedder | None = None,
+    at: datetime | None = None,
+    k: int = 5,
+) -> AsofAnswer:
+    """断片 → 文書 → 全体の順に範囲を広げ、各範囲で「時点の事実」→「履歴」を試す.
+
+    狭い範囲に事実があるなら、そこで「その時点の記録は無い → 最初の記録は…」と
+    答える方が、広い範囲の無関係な事実を返すより正しい（2026-09-29 Q16 の観察）。
+    """
+    if at is None:
+        at = parse_at(question)
+    sc = candidate_scopes(question, dsn=dsn, embedder=embedder)
+    scopes: list[tuple[str, dict[str, Any]]] = []
+    if sc.chunks:
+        scopes.append(("chunks", {"chunks": sc.chunks}))
+    if sc.docs:
+        scopes.append(("docs", {"docs": sc.docs}))
+    scopes.append(("all", {}))
+    for scope, filt in scopes:
+        if at is not None:
+            hits = as_of(question, at, dsn=dsn, k=k, **filt)
+            if hits:
+                return AsofAnswer(at, sc.docs, scope, False, hits)
+            hist = history(question, dsn=dsn, k=k, by="score", **filt)
+            if hist:
+                return AsofAnswer(at, sc.docs, scope, True, hist)
+        else:
+            hist = history(question, dsn=dsn, k=k, by="score", **filt)
+            if hist:
+                return AsofAnswer(at, sc.docs, scope, False, hist)
+    return AsofAnswer(at, sc.docs, "all", False, [])
+
+
+__all__ = [
+    "AT_RE",
+    "AsofAnswer",
+    "FactHit",
+    "Scopes",
+    "answer_asof",
+    "as_of",
+    "candidate_scopes",
+    "history",
+    "parse_at",
+]

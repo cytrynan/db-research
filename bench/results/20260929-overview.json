@@ -1,0 +1,52 @@
+{
+  "answers_file": "C:\\Users\\meer0\\dev\\db-research\\docs\\overview-answers.md",
+  "date": "2026-09-29",
+  "git_sha": "218d1bc-dirty",
+  "kind": "overview",
+  "model": "intfloat/multilingual-e5-small",
+  "per_question": [
+    {
+      "bundles": [
+        "dev",
+        "memory",
+        "references"
+      ],
+      "evidence_ids": [
+        1148,
+        1378,
+        237,
+        1064,
+        134,
+        166,
+        99,
+        210
+      ],
+      "id": "Q19",
+      "n_bundle_summaries": 3,
+      "n_doc_summaries": 5,
+      "warnings": []
+    },
+    {
+      "bundles": [
+        "dev",
+        "memory",
+        "references"
+      ],
+      "evidence_ids": [
+        1148,
+        1378,
+        237,
+        166,
+        236,
+        948,
+        92,
+        99
+      ],
+      "id": "Q20",
+      "n_bundle_summaries": 3,
+      "n_doc_summaries": 5,
+      "warnings": []
+    }
+  ],
+  "question_count": 2
+}

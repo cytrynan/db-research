@@ -1,7 +1,7 @@
 ---
 type: Question Set
 description: 型判定と検索品質の測定に使う質問20問（K が実際にくろこへ投げる形）。4型のラベルと正解の所在（ファイル・節）。個人データの値は書かない＝正解は「どこにあるか」だけ
-generated: { by: kuroko/claude-fable-5-1, at: 2026-09-29T11:00:00+09:00 }
+generated: { by: kuroko/claude-fable-5-1, at: 2026-09-29T13:50:00+09:00 }
 status: draft
 ---
 
@@ -37,10 +37,10 @@ status: draft
 | Q12 | K が確認済み（verified）の記録は references に何件ある？ | count | `v_unverified` の補集合（bundle='references'） | ビュー |
 | Q13 | 期限切れ（stale_after 超過）の記録はいくつ？ | count | `v_stale` | ビュー。bench 実行日に依存＝JSON に実行日を記録 |
 | Q14 | type が Life Data のファイルは何件？ | count | `v_by_type` | ビュー |
-| Q15 | 扶養の制度知識を references から別ファイルに分けたのはいつ？ | asof | `references/INDEX.md` `2026-08-11`（横断トピック「扶養・年収の壁（2026-08-11 分離）」） | 有効期間の切り替わり。bench は上位3件に「ファイル一致∧日付一致」があれば正解 |
-| Q16 | キャリアの候補職種は、2026-08 より前の時点では何と書いてあった？ | asof | `references/work.md` `2026-08-11`（3候補の申告が最初の事実。それ以前の記録は無い＝「最初の事実は 2026-08-11」と示せれば正解） | 「以前」を問う＝valid_to が閉じた行（今回のデータには無い） |
+| Q15 | 扶養の制度知識を references から別ファイルに分けたのはいつ？ | asof | `references/INDEX.md` `references/fuyou.md` `2026-08-11`（INDEX 横断トピックと fuyou.md 冒頭の両方に「2026-08-11 分離」がある） | 有効期間の切り替わり。bench は上位3件に「ファイル一致∧日付一致」があれば正解。**2026-09-29 に fuyou.md を正解ファイルに追加**（断片スコープの bench で fuyou.md の 2026-08-11 が返り、同じ事象の記録だったため） |
+| Q16 | キャリアの候補職種は、2026-08 より前の時点では何と書いてあった？ | asof | `references/work.md` `2026-08-10` `2026-08-11`（3候補の申告が最初の事実。それ以前の記録は無い＝「その時点の記録なし・最初の事実は 8 月上旬」と示せれば正解） | 「以前」を問う。**発見: 同じ申告の日付が INDEX.md では 2026-08-11、work.md 本文では 2026-08-10 と食い違う**（記録の不整合。時点検索が露わにした）。両方を正解日付にする |
 | Q17 | 収益目標を決めたのはいつで、当時の3枠は？ | asof | `references/money.md` `2026-07-26`（収益目標の K決定） | recorded_at と valid_from の一致確認 |
-| Q18 | 2026-09 時点で、営業（受託）の能動活動は動いていた？ | asof | `memory/team-kuroko-plan.md` `2026-08-24`（能動営業の停止）＋ `references/money.md` | 「停止」という状態変化を時点で答える。memory バンドルの取り込みが前提 |
+| Q18 | 2026-09 時点で、営業（受託）の能動活動は動いていた？ | asof | `memory/team-kuroko-plan.md` `memory/sales-routine-two-mechanisms.md` `2026-08-24`（能動営業・定期タスクの停止）＋ `references/money.md` | 「停止」という状態変化を時点で答える。memory バンドルの取り込みが前提。**2026-09-29 に sales-routine を正解ファイルに追加**（初回 bench で当該ファイルの 2026-08-24 の事実が返り、内容が正しかったため。期待欄の網羅漏れ） |
 | Q19 | 生活の「効率化」方針は、全体としてどのファイルにどう反映されてる？ | overview | INDEX 横断トピック「効率化・最適化（北極星）」→ profile / home / money / tools の要約 | バンドル要約＋リンク |
 | Q20 | K の健康まわりの記録、全体として何が手厚くて何が薄い？ | overview | `references/health.md` 全節＋INDEX「空欄・未着手」 | 要約階層（document → section）で答える |
 
