@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import calendar
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -15,8 +15,10 @@ from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
 
 AT_RE = re.compile(r"(20\d{2})-(\d{2})(?:-(\d{2}))?")
-# 「2026-08 より前」「2026-08-11 以前」→ その期間の直前の瞬間（期間自体は含めない）
-BEFORE_RE = re.compile(r"[ 　]*(より前|以前|より以前|までに)")
+# 「2026-08 より前」→ その期間の直前の瞬間（期間自体は含めない）。
+# 「以前」「までに」は日本語では基準日を**含む**ので既定（期間の終わり）のまま
+# （受入検証 D2・2026-09-29。以前は 4 語とも直前扱いにしていた）
+BEFORE_RE = re.compile(r"[ 　]*(より以前|より前)")
 
 
 @dataclass(frozen=True)
@@ -40,7 +42,9 @@ class FactHit:
 def parse_at(text: str) -> datetime | None:
     """`YYYY-MM-DD` はその日の終わり、`YYYY-MM` は月末の終わり（JST）。無ければ None.
 
-    日付の直後に「より前」「以前」が続くときは、その日（月）の**始まりの直前**を返す。
+    日付の直後に「より前」が続くときは、その日（月）の**始まりの直前**を返す
+    （「以前」「までに」は基準日を含むので終わりのまま）。質問文の中から拾う用途なので、
+    `--at` のような値そのものの検査には parse_at_option を使う。
     """
     m = AT_RE.search(text)
     if not m:
@@ -56,6 +60,18 @@ def parse_at(text: str) -> datetime | None:
         return datetime(y, mo, d, 23, 59, 59, tzinfo=JST)
     except ValueError:
         return None
+
+
+def parse_at_option(value: str) -> datetime | None:
+    """`--at` の値を検査する。`YYYY-MM-DD` / `YYYY-MM` に**全体一致**しなければ None.
+
+    parse_at は質問文の中から日付を拾うので `2026-08-1` → 月末、`x2026-08-15y` も
+    通してしまう（受入検証 D1）。オプション値は前後に余計な字があれば拒否する。
+    """
+    v = value.strip()
+    if AT_RE.fullmatch(v) is None:
+        return None
+    return parse_at(v)
 
 
 _SELECT = """
@@ -189,6 +205,7 @@ class AsofAnswer:
     scope: str  # 'chunks' | 'docs' | 'all'
     fallback_to_history: bool
     hits: list[FactHit]
+    chunks: list[int] = field(default_factory=list)  # 断片の絞り込み候補（記録用）
 
 
 def answer_asof(
@@ -217,15 +234,15 @@ def answer_asof(
         if at is not None:
             hits = as_of(question, at, dsn=dsn, k=k, **filt)
             if hits:
-                return AsofAnswer(at, sc.docs, scope, False, hits)
+                return AsofAnswer(at, sc.docs, scope, False, hits, chunks=sc.chunks)
             hist = history(question, dsn=dsn, k=k, by="score", **filt)
             if hist:
-                return AsofAnswer(at, sc.docs, scope, True, hist)
+                return AsofAnswer(at, sc.docs, scope, True, hist, chunks=sc.chunks)
         else:
             hist = history(question, dsn=dsn, k=k, by="score", **filt)
             if hist:
-                return AsofAnswer(at, sc.docs, scope, False, hist)
-    return AsofAnswer(at, sc.docs, "all", False, [])
+                return AsofAnswer(at, sc.docs, scope, False, hist, chunks=sc.chunks)
+    return AsofAnswer(at, sc.docs, "all", False, [], chunks=sc.chunks)
 
 
 __all__ = [
@@ -238,4 +255,5 @@ __all__ = [
     "candidate_scopes",
     "history",
     "parse_at",
+    "parse_at_option",
 ]

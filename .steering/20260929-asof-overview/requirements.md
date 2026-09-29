@@ -13,7 +13,7 @@
 ## 実装対象の機能
 
 ### 1. スキーマ（新番号のみ）
-- `0008_fact.sql`: `fact(id, document_id fk cascade, chunk_id fk cascade null, subject text, value text, valid_from timestamptz, valid_to timestamptz null, recorded_at timestamptz, valid_source text check in ('explicit','dated_text','inferred'), lexemes text, tsv generated, unique(document_id, coalesce(chunk_id,0), subject, valid_from))`＋GIN(tsv)＋(valid_from) 索引
+- `0008_fact.sql`: `fact(id, document_id fk cascade, chunk_id fk cascade null, subject text, value text, valid_from timestamptz, valid_to timestamptz null, recorded_at timestamptz, valid_source text check in ('explicit','dated_text','inferred'), lexemes text, tsv generated, unique(document_id, coalesce(chunk_id,0), subject, valid_from))`＋GIN(tsv)＋(valid_from) 索引。**→ `0010_fact_uniq_value.sql` で一意索引に `md5(value)` を追加**（受入検証 D3・2026-09-29）
 - `0009_summary.sql`: `summary(id, level text check in ('bundle','document','section'), target_key text, text text, source_hash text, tokens int, unique(level, target_key))`
 
 ### 2. 事実の抽出（F5・`dbr facts --bundle`）
@@ -54,7 +54,7 @@
 - [ ] ruff / mypy / pytest（unit・db）PASS、カバレッジ 80% 以上
 
 ## 成功指標
-- asof 4 問中 **3 問以上**正解（Q16「以前は何と書いてあった」は履歴が無いので「その時点の記録なし」を正解扱いにする＝期待欄に明記）
+- asof 4 問中 **3 問以上**正解（Q16「2026-08 より前は何と書いてあった」は履歴が無いので「その時点の記録なし → 履歴の最初の事実」を正解扱いにする＝期待欄に明記）。**時点語の解釈**: 「より前／より以前」は期間を含めない、「以前／までに」は基準日を含む（受入検証 D2 で確定）
 - count 4 問 `stable: true`
 
 ## スコープ外
@@ -65,5 +65,5 @@
 ## 識別子契約（`subject`・`level`/`target_key`・`bundle`）
 - **特殊キー**: `subject` は本文由来の文字列。dict のキーに使わず、SQL パラメータでのみ扱う。`level` は固定語彙 3 値（CHECK 制約）。`target_key` は `bundle` 名／`document.id`／`chunk.id` の文字列で、生成側が組み立てる（ユーザー入力を含めない）
 - **正規化**: `subject` は NFKC・前後空白除去・日付部分を除去してから保存。照合は tsv（lexemes）で行い、文字列一致に依存しない
-- **衝突**: `(document_id, chunk_id, subject, valid_from)` の重複は抽出時に dict で畳む（同じ行に同じ日付が 2 回出ても 1 件）。`summary` は `(level, target_key)` 一意・再構築は全削除→挿入
-- **不在**: 事実が 1 件も無い問い合わせは「該当する記録なし」を返す（find に倒さない）。`at` が解釈できない日付は exit 2
+- **衝突**: `(document_id, chunk_id, subject, valid_from, md5(value))` が一意（0010）。抽出時は（日付, 行）で畳む＝同じ行に同じ日付が 2 回出ても 1 件。**subject では畳まない**（見出しが同じで動詞だけ違う別行は別の事実。受入検証 D3）。`summary` は `(level, target_key)` 一意・再構築は全削除→挿入
+- **不在**: 事実が 1 件も無い問い合わせは「該当する記録なし」を返す（find に倒さない）。`--at` は `YYYY-MM-DD`／`YYYY-MM` に**全体一致**しなければ型に関係なく exit 2（受入検証 D1）

@@ -52,3 +52,22 @@ def test_overview_answer_with_embeddings_and_fallback(clean_db: str) -> None:
     assert b.doc_summaries and b.doc_summaries[0]["doc"] == "memory/updated.md"
     assert pick_bundles("dev と memory を比べて") == ["dev", "memory"]
     assert pick_bundles("全部") is None
+    assert pick_bundles("devcontainer の設定は？") is None  # 部分一致はしない
+
+
+def test_overview_falls_back_to_fts_when_target_bundle_has_no_embeddings(
+    clean_db: str,
+) -> None:
+    # memory にだけ埋め込みがあり references には無い → 対象 bundle が references
+    # のとき、黙って空にせず全文検索で代替して WARN を出す（受入検証 D4）
+    run(FIXTURES / "kuroko", "memory", clean_db, log=lambda _m: None)
+    run(FIXTURES / "dated", "references", clean_db, log=lambda _m: None)
+    run_summarize("memory", clean_db)
+    run_summarize("references", clean_db)
+    fake = get_embedder("fake")
+    run_embed("memory", "ctx", clean_db, fake)
+    a = answer("references の扶養の記録は全体としてどう？", dsn=clean_db, embedder=fake)
+    assert a.bundles == ["references"]
+    assert any("全文検索で代替" in w for w in a.warnings)
+    assert a.doc_summaries
+    assert all(d["doc"].startswith("references/") for d in a.doc_summaries)

@@ -48,6 +48,39 @@ def test_extract_dated_from_heading_and_lines_dedupes() -> None:
     assert len(rows) == 2  # 同じ行が 2 回あっても 1 件
 
 
+def test_date_verb_window_stops_at_next_date() -> None:
+    # 「08-01 に検討、08-11 決定」は 08-11 の決定だけ（受入検証 D3）
+    line = "2026-08-01 に検討、2026-08-11 決定"
+    assert [(m.group(3), m.group(4)) for m in DATE_VERB.finditer(line)] == [
+        ("11", "決定")
+    ]
+    rows = extract_dated(
+        document_id=1, chunk_id=1, heading_path="H", body=line, recorded_at=NOW
+    )
+    assert [r.valid_from for r in rows] == [datetime(2026, 8, 11, tzinfo=JST)]
+    # 両方に動詞があれば両方拾う（1 行 2 事実）
+    two = extract_dated(
+        document_id=1,
+        chunk_id=1,
+        heading_path="H",
+        body="2026-08-01 開始、2026-08-11 決定",
+        recorded_at=NOW,
+    )
+    assert sorted(r.valid_from.day for r in two) == [1, 11]
+
+
+def test_extract_dated_keeps_distinct_lines_with_same_heading_and_date() -> None:
+    # 見出しが同じで日付＋動詞しか違わない 2 行は 2 件（subject で畳まない。D3）
+    rows = extract_dated(
+        document_id=1,
+        chunk_id=1,
+        heading_path="H",
+        body="- 2026-08-11 決定\n- 2026-08-11 承認\n",
+        recorded_at=NOW,
+    )
+    assert {r.value for r in rows} == {"- 2026-08-11 決定", "- 2026-08-11 承認"}
+
+
 def test_normalize_subject_strips_date_and_verb() -> None:
     s = normalize_subject(
         "A > 収益目標（2026-07-26 K決定）", "- 候補は3つ（2026-08-11 K申告）"
@@ -65,7 +98,18 @@ def test_extract_explicit_from_valid_key() -> None:
     )
     assert row is not None and row.valid_source == "explicit"
     assert row.valid_from == datetime(2026, 4, 1, tzinfo=JST)
-    assert row.valid_to == datetime(2027, 3, 31, tzinfo=JST)
+    # 日付だけの to は最終日を含む＝排他的終端は翌日 0 時
+    assert row.valid_to == datetime(2027, 4, 1, tzinfo=JST)
+    with_time = extract_explicit(
+        document_id=1,
+        fm={"valid": {"from": "2026-04-01", "to": "2027-03-31T12:00:00+09:00"}},
+        title="a.md",
+        recorded_at=NOW,
+    )
+    assert with_time is not None
+    assert with_time.valid_to == datetime(
+        2027, 3, 31, 12, tzinfo=JST
+    )  # 時刻つきはそのまま
     assert extract_explicit(document_id=1, fm={}, title="a.md", recorded_at=NOW) is None
     bad = extract_explicit(
         document_id=1, fm={"valid": {"from": "2026-04-01", "to": "2026-01-01"}},

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from dbr.features.ingest.handler import BUNDLES
-from dbr.features.search import Mode, NoEmbeddings, dedupe_by_document, search
+from dbr.features.search import Hit, Mode, NoEmbeddings, dedupe_by_document, search
 from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
 
@@ -25,8 +26,29 @@ class OverviewAnswer:
 
 
 def pick_bundles(question: str) -> list[str] | None:
-    found = [b for b in sorted(BUNDLES) if b in question]
+    """質問文に bundle 名が**語として**出ていればその bundle に絞る（部分一致はしない）.
+
+    `dev` は `devcontainer` の中にも現れるので、英数字の続きでない位置だけ拾う。
+    """
+    found = [
+        b
+        for b in sorted(BUNDLES)
+        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(b)}(?![A-Za-z0-9_])", question)
+    ]
     return found or None
+
+
+def _top_docs(
+    question: str,
+    mode: Mode,
+    dsn: str,
+    embedder: Embedder | None,
+    bundles: list[str] | None,
+    n: int,
+) -> list[Hit]:
+    return dedupe_by_document(
+        search(question, mode=mode, dsn=dsn, k=50, embedder=embedder, bundles=bundles)
+    )[:n]
 
 
 def answer(
@@ -66,17 +88,22 @@ def answer(
             out.warnings.append("bundle 要約が無い（dbr summarize を実行する）")
 
     mode: Mode = "embed_ctx" if embedder is not None else "fts"
-    try:
-        hits = dedupe_by_document(
-            search(
-                question, mode=mode, dsn=dsn, k=50, embedder=embedder, bundles=bundles
+    hits: list[Hit] = []
+    use_fts = mode == "fts"
+    if not use_fts:
+        try:
+            hits = _top_docs(question, mode, dsn, embedder, bundles, top_docs)
+        except NoEmbeddings:
+            hits = []
+        if not hits:
+            # NoEmbeddings は表全体が 0 件のときしか出ない。対象 bundle だけ埋め込みが
+            # 無いときは空で返るので、黙って空にせず全文検索へ（受入検証 D4）
+            out.warnings.append(
+                "対象 bundle に文脈付き埋め込みが無いので全文検索で代替"
             )
-        )[:top_docs]
-    except NoEmbeddings:
-        out.warnings.append("文脈付き埋め込みが無いので全文検索で代替")
-        hits = dedupe_by_document(
-            search(question, mode="fts", dsn=dsn, k=50, bundles=bundles)
-        )[:top_docs]
+            use_fts = True
+    if use_fts:
+        hits = _top_docs(question, "fts", dsn, None, bundles, top_docs)
 
     if hits:
         conn = connect(dsn)

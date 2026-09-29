@@ -199,11 +199,16 @@ RerankerOpt = Annotated[
 DEFAULT_RERANKER_NAME = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 
 
+ASK_KINDS = ("auto", "find", "count", "asof", "overview")
+
+
 @app.command()
 def ask(
     question: Annotated[str, typer.Argument()],
     mode: Annotated[str, typer.Option("--mode")] = "hybrid_ctx",
-    kind: Annotated[str, typer.Option("--kind", help="auto | find | count")] = "auto",
+    kind: Annotated[
+        str, typer.Option("--kind", help="auto | find | count | asof | overview")
+    ] = "auto",
     k: Annotated[int, typer.Option("--k")] = 5,
     model: Annotated[str, typer.Option("--model")] = "intfloat/multilingual-e5-small",
     reranker: RerankerOpt = DEFAULT_RERANKER_NAME,
@@ -214,10 +219,23 @@ def ask(
     as_json: JsonOpt = False,
 ) -> None:
     """型判定 → 該当する道具で答える（find / count / asof / overview）."""
+    from dbr.features.asof import parse_at_option
     from dbr.features.classify import RuleClassifier
     from dbr.features.count import VIEWS, ask_view
     from dbr.features.search import MODES, NoEmbeddings, dedupe_by_document, search
 
+    # オプションの検査は型に関係なく先にやる（--kind bogus が overview に落ちない・
+    # --at の書式は asof 以外でも exit 2。受入検証 D1）
+    if kind not in ASK_KINDS:
+        typer.echo(f"--kind は {' | '.join(ASK_KINDS)}", err=True)
+        raise typer.Exit(code=2)
+    at_dt = parse_at_option(at) if at is not None else None
+    if at is not None and at_dt is None:
+        typer.echo(
+            "--at は YYYY-MM-DD か YYYY-MM に全体一致（例 2026-08-15 / 2026-08）",
+            err=True,
+        )
+        raise typer.Exit(code=2)
     c = RuleClassifier().classify(question)
     resolved = c.kind if kind == "auto" else kind
     out: dict[str, Any] = {"kind": resolved, "reason": c.reason}
@@ -286,12 +304,8 @@ def ask(
             typer.echo("  " + "  ".join(f"{k2}={v}" for k2, v in r.items()))
         return
     if resolved == "asof":
-        from dbr.features.asof import answer_asof, parse_at
+        from dbr.features.asof import answer_asof
 
-        at_dt = parse_at(at) if at else None
-        if at and at_dt is None:
-            typer.echo("--at は YYYY-MM-DD か YYYY-MM", err=True)
-            raise typer.Exit(code=2)
         try:
             # ① 探し物で文書を絞ってから時間で絞る。無ければ全文書 → 履歴で補う
             asof_ans = answer_asof(
@@ -308,6 +322,7 @@ def ask(
         out["at"] = at_dt.date().isoformat() if at_dt else None
         out["candidate_docs"] = asof_ans.docs
         out["scope"] = asof_ans.scope
+        out["n_candidate_chunks"] = len(asof_ans.chunks)
         out["fallback_to_history"] = asof_ans.fallback_to_history
         out["facts"] = [
             {
@@ -325,12 +340,13 @@ def ask(
             return
         head = f"時点 {out['at']} の事実" if at_dt else "履歴（関連度順）"
         if asof_ans.fallback_to_history:
-            head += "（その時点の記録なし → 最初の記録を履歴から）"
-        scope = (
-            f"文書を絞った: {', '.join(asof_ans.docs)}"
-            if asof_ans.scope == "docs"
-            else "全文書"
-        )
+            head += "（その時点の記録なし → 関連する記録を履歴から・関連度順）"
+        if asof_ans.scope == "chunks":
+            scope = f"断片を絞った（質問に近い {len(asof_ans.chunks)} 断片）"
+        elif asof_ans.scope == "docs":
+            scope = f"文書を絞った: {', '.join(asof_ans.docs)}"
+        else:
+            scope = "全文書"
         typer.echo(f"[{resolved}] {c.reason} / {head} / {scope}")
         if not facts:
             typer.echo("  該当する記録なし")

@@ -17,13 +17,18 @@ TOP_K = 3
 def is_correct(
     hits: list[FactHit], expected_docs: tuple[str, ...], dates: tuple[str, ...]
 ) -> bool:
-    for h in hits:
-        d = h.valid_from.date().isoformat()
-        if (not expected_docs or h.doc_key in expected_docs) and (
-            not dates or d in dates
-        ):
-            return True
-    return False
+    """上位 k 件に「ファイル一致 ∧ 日付一致」の事実があるか.
+
+    期待のファイルか日付が空なら**不正解**（正解が定義されていない問いは通さない）。
+    以前は空側を「何でも一致」にしていたので、期待欄の書き漏れがそのまま正解に
+    数えられた（受入検証 D5・2026-09-29）。
+    """
+    if not expected_docs or not dates:
+        return False
+    return any(
+        h.doc_key in expected_docs and h.valid_from.date().isoformat() in dates
+        for h in hits
+    )
 
 
 def run_asof(
@@ -45,6 +50,7 @@ def run_asof(
                 "id": q.id,
                 "at": at.date().isoformat() if at else None,
                 "candidate_docs": a.docs,
+                "n_candidate_chunks": len(a.chunks),
                 "scope": a.scope,
                 "fallback_to_history": a.fallback_to_history,
                 "expected": list(q.expected),

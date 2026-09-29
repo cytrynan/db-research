@@ -3,17 +3,20 @@
 > 目的: 会話の文脈が切れても、ここと `docs/decisions.md`・`.steering/*/tasklist.md` だけで再開できるようにする。
 
 ## いまどこか
-- **完了した作業単位（3つ・すべて issue クローズ・push 済み）**
+- **完了した作業単位（4つ・すべて issue クローズ・push 済み）**
   1. `20260929-foundation-ingest` — Docker PostgreSQL（localhost 限定）・OKF 取り込み（冪等・private.md 二重拒否）・count ビュー
   2. `20260929-search-classify` — Sudachi→tsvector（OR）・ローカル埋め込み（e5-small）・RRF・型判定（20/20）・bench find
   3. `20260929-rerank-tuning` — 並べ直し（cross-encoder）・重み付き RRF・HNSW 強制・sweep/hnsw bench
-- **確定した測定値**: `docs/bench-results.md`（v4/v5）。find 10 問の最良は **embed_ctx（文脈付き埋め込み単体）recall@5 0.90 / MRR 0.811**。全文検索を混ぜると下がる。HNSW は 2,154 行では速度差なし。
-- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）に references（16 文書）＋ dev（53 文書）＝1,077 断片、埋め込み plain/ctx 各 1,077 行が入っている。テストは別 DB `dbr_test`。
+  4. `20260929-asof-overview` — fact 表（バイテンポラル・explicit/dated_text/inferred）・summary 表（抽出型 3 段）・`dbr ask` の asof（断片→文書→全体で絞る）/overview・bench count|asof|overview。受入検証（readonly-reviewer/Opus）の指摘 D1〜D5 を回収済み（0010 で `fact_uniq` に md5(value)）。未回収 3 件は tasklist の受入検証節
+- **確定した測定値**: `docs/bench-results.md`（v4〜v7）。① find 10 問の最良は **embed_ctx（文脈付き埋め込み単体）recall@5 0.90 / MRR 0.811**（全文検索を混ぜると下がる。HNSW は 2,154 行では速度差なし）。② count 4/4 stable。③ asof **4/4**（v7・2 回一致）。④ overview は `docs/overview-answers.md` で **K 採点待ち**。
+- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）に references（16）＋dev（53）＋memory（76）＝145 文書・1,230 断片、埋め込み plain/ctx、fact 346 行（dated_text 295・inferred 51）、summary 3 段。テストは別 DB `dbr_test`。
+- **訂正済みの誤記**: v6 で「INDEX と work.md の日付不整合」と書いたのは timestamptz の UTC 表示の誤読（work.md に 2026-08-10 は無い）。実データの「発見」は原本を grep してから書く。
 
 ## 次にやること（推奨順）
-1. **③時点（F5）と④全体（F6）**: `fact`（valid_from/valid_to/recorded_at）と `summary`（bundle→document→section）の表を**新番号のマイグレーション**で足し、`dbr ask` の asof/overview を実装。20 問の残り 10 問（count 4・asof 4・overview 2）を測る
-2. 検索側の残り: `embed_ctx_rerank`、断片スコアの文書集約、語彙一致が効く質問の追加
-3. 運用: `scripts/gate.sh`（pipefail・ruff・mypy・pytest・coverage）にゲートを固定する
+1. **K の採点**: `docs/overview-answers.md` の Q19・Q20 を 1〜5 で採点 → ④ 抽出型の天井を確定してから LLM 要約（ローカル。外部 API は K 承認要）と比較する
+2. 受入検証の未回収 3 件: summary の source_hash 陳腐化 WARN／recorded_at の規則（generated_at 無しは ingested_at）の明文化／Q12 のビュー（`v_verified` を足すか補集合のままか）
+3. 検索側の残り: `embed_ctx_rerank`、断片スコアの文書集約、語彙一致が効く質問の追加
+4. 運用: `scripts/gate.sh`（pipefail・ruff・mypy・pytest・coverage）にゲートを固定する
 
 ## 再開の手順
 ```bash

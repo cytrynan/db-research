@@ -62,7 +62,7 @@ def answer(question, *, dsn, embedder, bundles=None, top_docs=5) -> OverviewAnsw
 
 ### 5. bench 追加
 - `bench/count.py`: Q11〜14 → `_guess_view`（cli から `features/count` へ移す）→ 3 回実行 → `stable`
-- `bench/asof.py`: 期待欄から `references/x.md` と `20xx-xx-xx` を抽出。`parse_at(question)` があれば `as_of` 無ければ `history`。上位 3 件に「ファイル一致∧日付一致」があれば正解。Q16 のように期待が `なし` なら「該当 0 件または期待日付以前の事実なし」を正解
+- `bench/asof.py`: 期待欄から `references/x.md` と `20xx-xx-xx` を抽出。`parse_at(question)` があれば `as_of` 無ければ `history`。上位 3 件に「ファイル一致∧日付一致」があれば正解。**期待のファイルか日付が空の問いは不正解**（空側を「何でも一致」にしない＝受入検証 D5）。Q16 は「その時点の記録なし → 履歴の最初の事実 2026-08-11 work.md」が上位に来れば正解
 - `bench/overview.py`: Q19〜20 の `answer` を `docs/overview-answers.md` へ（`| # | 質問 | 回答 | K採点(1-5) |`）
 
 ### 6. CLI

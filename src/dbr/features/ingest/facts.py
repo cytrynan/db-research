@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from dbr.features.ingest.frontmatter import JST, to_datetime
@@ -25,8 +25,11 @@ VERBS = (
     "停止|廃止|変更|開始|導入|確定|更新"
 )
 # 日付と動詞の間に短い目的語が入る形（「2026-08-24 A枠の能動営業停止」）も拾う。
-# 窓は同一行内 20 字まで（行をまたがない・遠い動詞を拾わない）
-DATE_VERB = re.compile(rf"(20\d{{2}})-(\d{{2}})-(\d{{2}})[^\n]{{0,20}}?({VERBS})")
+# 窓は同一行内 20 字まで（行をまたがない・遠い動詞を拾わない）。窓の中に**次の日付が
+# 現れたら打ち切る**（「2026-08-01 に検討、2026-08-11 決定」を 08-01 の決定と
+# 読まないため。受入検証 D3・2026-09-29）
+_WINDOW = r"(?:(?!20\d{2}-\d{2}-\d{2})[^\n]){0,20}?"
+DATE_VERB = re.compile(rf"(20\d{{2}})-(\d{{2}})-(\d{{2}}){_WINDOW}({VERBS})")
 DATE_ANY = re.compile(r"20\d{2}-\d{2}-\d{2}")
 SUBJECT_HEAD = 40
 VALUE_MAX = 300
@@ -82,30 +85,50 @@ def extract_dated(
     body: str,
     recorded_at: datetime,
 ) -> list[FactRow]:
-    """見出し行＋本文の各行から日付つきの事実を抽出（同じ subject・日付は 1 件）."""
+    """見出し行＋本文の各行から日付つきの事実を抽出（同じ行・同じ日付は 1 件）.
+
+    重複判定は（日付, 行）で行う。subject で畳むと、見出しが同じで日付＋動詞しか
+    違わない別々の行（「- 2026-08-11 決定」「- 2026-08-11 承認」）が 1 件に消える
+    （受入検証 D3・実データで 2 行）。
+    """
     last_heading = heading_path.split(" > ")[-1] if heading_path else ""
     lines = ([last_heading] if last_heading else []) + body.split("\n")
-    seen: dict[tuple[str, datetime], FactRow] = {}
+    seen: dict[tuple[datetime, str], FactRow] = {}
     for line in lines:
         for m in DATE_VERB.finditer(line):
             when = parse_ymd(m.group(1), m.group(2), m.group(3))
             if when is None:
                 continue
-            subject = normalize_subject(heading_path, line)
-            key = (subject, when)
+            value = line.strip()[:VALUE_MAX]
+            key = (when, value)
             if key in seen:
                 continue
             seen[key] = FactRow(
                 document_id=document_id,
                 chunk_id=chunk_id,
-                subject=subject,
-                value=line.strip()[:VALUE_MAX],
+                subject=normalize_subject(heading_path, line),
+                value=value,
                 valid_from=when,
                 valid_to=None,
                 recorded_at=recorded_at,
                 valid_source="dated_text",
             )
     return list(seen.values())
+
+
+def _exclusive_end(raw: object) -> datetime | None:
+    """`valid.to` を排他的な終端に直す。日付だけならその日を**含む**ので翌日 0 時.
+
+    as_of は `at < valid_to` で判定するので、日付を 0 時のままにすると最終日が
+    有効期間から外れる（受入検証・任意 2026-09-29）。時刻つきの値はそのまま。
+    """
+    end = to_datetime(raw)
+    if end is None:
+        return None
+    date_only = (isinstance(raw, date) and not isinstance(raw, datetime)) or (
+        isinstance(raw, str) and len(raw.strip()) == 10
+    )
+    return end + timedelta(days=1) if date_only else end
 
 
 def extract_explicit(
@@ -117,7 +140,7 @@ def extract_explicit(
     start = to_datetime(valid.get("from"))
     if start is None:
         return None
-    end = to_datetime(valid.get("to"))
+    end = _exclusive_end(valid.get("to"))
     if end is not None and end <= start:
         end = None
     desc = fm.get("description")

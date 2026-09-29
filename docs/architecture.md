@@ -87,7 +87,7 @@ status: draft
 
 - 埋め込み: HNSW（`vector_cosine_ops`、`m=16`, `ef_construction=64`）。`ef_search` を 40/100/250 で振って recall とレイテンシを測る（一次資料: pgvector / Supabase の HNSW 解説）
 - 全文: GIN on `tsv`（生成列）
-- ③: `(subject, valid_from)` 複合＋部分一意 `(subject) WHERE valid_to IS NULL`
+- ③: 実装は `fact_uniq (document_id, COALESCE(chunk_id,0), subject, valid_from, md5(value))`（0008→0010。受入検証 D3 で `md5(value)` を追加）＋GIN(tsv)＋`(valid_from, valid_to)`。設計時案の部分一意 `(subject) WHERE valid_to IS NULL` は、valid_to を自動で閉じない方針のため未採用
 
 ## データ永続化戦略
 

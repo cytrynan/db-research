@@ -8,6 +8,9 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — v7 節（受入検証 D1〜D5 の回収後に asof を再測定 4/4・2 回一致・dated_text 293→295）と、v6「発見 2（INDEX と work.md の日付不整合）」の**取り下げ**（timestamptz の UTC 表示を日付と誤読） (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q16 の正解日付から `2026-08-10` を**撤回**（work.md に記載なし・受入検証で反証。誤読の経緯を備考に明記）、「より前／以前」の解釈を備考に追記 (kuroko/claude-fable-5-1)
+* **Update**: [技術仕様書](architecture.md) — ③ の索引を実装どおり（`fact_uniq` に md5(value)・0010）に訂正 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v6 節（②count 4/4 stable・③asof 4/4＝断片→文書→全体の 2 段で到達、経緯 a〜e と正解欄の追加理由・INDEX と work.md の日付不整合の発見・④overview は K 採点待ち・20 問の総括） (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — Q15 の正解ファイルに `references/fuyou.md` を追加（同じ「2026-08-11 分離」の記録が fuyou.md 冒頭にもある。断片スコープの bench で先に返ったため） (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — Q16 の正解日付に `2026-08-10` を追加（work.md 本文の日付。INDEX.md の 2026-08-11 と食い違う＝記録の不整合を発見） (kuroko/claude-fable-5-1)

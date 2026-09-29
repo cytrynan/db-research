@@ -29,11 +29,13 @@ def _count(dsn: str, source: str | None = None) -> int:
 def test_facts_counts_and_idempotent(clean_db: str) -> None:
     run(FIXTURES / "dated", "references", clean_db, log=lambda _m: None)
     r1 = run_facts("references", clean_db)
-    assert (r1.explicit, r1.dated_text, r1.inferred, r1.skipped_no_date) == (1, 3, 1, 0)
+    # dated_text 5 = decisions-note 3 ＋ same-day 2（同じ見出し・同じ日付・動詞だけ違う
+    # 2 行を 2 件として保持できる＝fact_uniq に md5(value) を含めた 0010。受入検証 D3）
+    assert (r1.explicit, r1.dated_text, r1.inferred, r1.skipped_no_date) == (1, 5, 1, 0)
     n1 = _count(clean_db)
-    assert n1 == 5
+    assert n1 == 7
     r2 = run_facts("references", clean_db)
-    assert (r2.explicit, r2.dated_text, r2.inferred) == (1, 3, 1)
+    assert (r2.explicit, r2.dated_text, r2.inferred) == (1, 5, 1)
     assert _count(clean_db) == n1  # 全削除→再挿入で行数不変
     assert _count(clean_db, "explicit") == 1 and _count(clean_db, "inferred") == 1
 
@@ -64,6 +66,12 @@ def test_explicit_valid_window_and_inferred_are_queryable(clean_db: str) -> None
     assert not any(
         h.valid_source == "explicit" for h in after
     )  # valid_to を過ぎたら出ない
+    last_day = as_of(
+        "有効期間を持つ文書",
+        datetime(2027, 3, 31, 23, 59, 59, tzinfo=JST),
+        dsn=clean_db,
+    )
+    assert any(h.valid_source == "explicit" for h in last_day)  # 最終日を含む
     inf = history("ただのメモ 日付", dsn=clean_db)
     assert any(h.valid_source == "inferred" for h in inf)
     assert as_of("", datetime(2026, 1, 1, tzinfo=JST), dsn=clean_db) == []

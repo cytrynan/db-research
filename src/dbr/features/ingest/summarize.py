@@ -10,11 +10,20 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
+from dbr.features.ingest.frontmatter import JST
 from dbr.shared.db import connect
 
 FENCE = re.compile(r"^\s*(```|~~~)")
+
+
+def _today() -> str:
+    """要約を作った日（JST）。「期限切れ」はこの日を基準に数える（日付を直書きしない）."""
+    return datetime.now(JST).date().isoformat()
+
+
 BULLET = re.compile(r"^\s*([-*+]|\d+\.)\s+")
 
 
@@ -132,13 +141,13 @@ def run_summarize(bundle: str, dsn: str) -> SummarizeReport:
             bundle_lines.append(f"- {d['rel_path']}: {desc or '(description なし)'}")
             if d["verified_at"] is None and d["status"] != "deprecated":
                 unverified += 1
-            if d["stale_after"] is not None and str(d["stale_after"]) < "2026-09-29":
+            if d["stale_after"] is not None and str(d["stale_after"]) < _today():
                 stale += 1
             by_type[str(d["type"] or "-")] = by_type.get(str(d["type"] or "-"), 0) + 1
         types = ", ".join(f"{k} {v}" for k, v in sorted(by_type.items()))
         head = (
             f"{bundle}: 文書 {len(docs)} / 種別: {types or '-'} / "
-            f"未確認 {unverified} / 期限切れ（2026-09-29 時点） {stale}"
+            f"未確認 {unverified} / 期限切れ（{_today()} 時点） {stale}"
         )
         bundle_text = head + "\n" + "\n".join(bundle_lines)
         rows.append(

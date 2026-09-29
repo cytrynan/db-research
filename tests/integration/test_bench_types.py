@@ -70,10 +70,10 @@ def test_is_correct_rules() -> None:
     assert is_correct([h], ("references/a.md",), ("2026-08-11",))
     assert not is_correct([h], ("references/b.md",), ("2026-08-11",))
     assert not is_correct([h], ("references/a.md",), ("2026-08-12",))
-    assert is_correct([h], (), ("2026-08-11",)) and is_correct(
-        [h], ("references/a.md",), ()
-    )
-    assert not is_correct([], ("references/a.md",), ())
+    # 期待の片方が空なら不正解（空側を「何でも一致」にしない。受入検証 D5）
+    assert not is_correct([h], (), ("2026-08-11",))
+    assert not is_correct([h], ("references/a.md",), ())
+    assert not is_correct([], ("references/a.md",), ("2026-08-11",))
 
 
 def test_run_overview_writes_answers_file(clean_db: str, tmp_path: Path) -> None:
@@ -137,3 +137,15 @@ def test_cli_bench_count_asof_overview_and_ask_all_kinds(
         assert r.exit_code == 0, (q, r.output)
     r = runner.invoke(app, ["ask", "いつ？", "--at", "2026-13", "--dsn", clean_db])
     assert r.exit_code == 2
+    # --at は全体一致（受入検証 D1）。asof 以外の型でも exit 2
+    for bad_at in ("2026-08-1", "x2026-08-15y"):
+        r = runner.invoke(app, ["ask", "いつ？", "--at", bad_at, "--dsn", clean_db])
+        assert r.exit_code == 2, (bad_at, r.output)
+    r = runner.invoke(
+        app,
+        ["ask", "references のファイルは何件？", "--kind", "count", "--at", "2026-13",
+         "--dsn", clean_db],
+    )  # fmt: skip
+    assert r.exit_code == 2
+    r = runner.invoke(app, ["ask", "x", "--kind", "bogus", "--dsn", clean_db])
+    assert r.exit_code == 2  # 語彙外の --kind は overview に落ちない
