@@ -3,6 +3,8 @@
 import math
 from pathlib import Path
 
+import pytest
+
 from dbr.features.bench.metrics import mrr, rank_of, recall_at
 from dbr.features.bench.questions import load_questions, parse_row
 from dbr.features.bench.report import to_markdown
@@ -75,3 +77,17 @@ def test_to_markdown_has_summary_and_per_question_rows() -> None:
     md = to_markdown(result)
     assert "| fts | 0.50 | 1.00 | 0.550 | 0 |" in md
     assert "| Q02 | 9 |" in md
+
+
+def test_result_path_label_rules(tmp_path: Path) -> None:
+    from dbr.features.bench.report import result_path, save_json
+
+    plain = result_path(tmp_path, "find")
+    labeled = result_path(tmp_path, "find", "v5")
+    assert plain.name.endswith("-find.json") and labeled.name.endswith("-find-v5.json")
+    assert plain != labeled
+    for bad in ["", "a/b", "..", "日本語", "x" * 33, "v 5"]:
+        with pytest.raises(ValueError):
+            result_path(tmp_path, "find", bad)
+    p = save_json({"a": 1}, tmp_path, "find", "v5")
+    assert p.exists() and not plain.exists()  # ラベル付きは既存を上書きしない

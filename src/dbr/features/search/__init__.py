@@ -10,10 +10,12 @@ from dbr.features.search.fuse import rrf
 from dbr.features.search.vector import NoEmbeddings, vector_search
 from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
+from dbr.shared.rerank import Reranker
 
-Mode = Literal["embed", "fts", "hybrid", "hybrid_ctx"]
+Mode = Literal["embed", "fts", "hybrid", "hybrid_ctx", "hybrid_ctx_rerank"]
 MODES: tuple[str, ...] = get_args(Mode)
-CANDIDATES = 100  # 各系の一次取得件数
+CANDIDATES = 100  # 各系の一次取得件数（既定）
+RERANK_TOP = 150  # 並べ直しに渡す融合上位の件数
 
 
 @dataclass(frozen=True)
@@ -24,7 +26,8 @@ class Hit:
     heading_path: str
     body: str
     score: float
-    source: str  # 'fts' | 'embed' | 'both'
+    source: str  # 'fts' | 'embed' | 'both' | 'rerank'
+    context: str | None = None
 
     @property
     def doc_key(self) -> str:
@@ -32,6 +35,7 @@ class Hit:
 
 
 def _hit(row: dict[str, Any], source: str, score: float | None = None) -> Hit:
+    ctx = row.get("context")
     return Hit(
         chunk_id=int(str(row["chunk_id"])),
         bundle=str(row["bundle"]),
@@ -40,6 +44,7 @@ def _hit(row: dict[str, Any], source: str, score: float | None = None) -> Hit:
         body=str(row["body"]),
         score=float(score if score is not None else row["score"]),
         source=source,
+        context=str(ctx) if ctx is not None else None,
     )
 
 
@@ -55,40 +60,11 @@ def dedupe_by_document(hits: list[Hit]) -> list[Hit]:
     return out
 
 
-def search(
-    question: str,
-    *,
-    mode: Mode,
-    dsn: str,
-    k: int = 20,
-    embedder: Embedder | None = None,
-    ef_search: int = 40,
-    bundles: list[str] | None = None,
+def _fuse(
+    frows: list[dict[str, Any]],
+    vrows: list[dict[str, Any]],
+    weights: tuple[float, float] | None,
 ) -> list[Hit]:
-    if mode not in MODES:
-        raise ValueError(f"mode は {MODES} のいずれか")
-    conn = connect(dsn)
-    with conn:
-        if mode == "fts":
-            rows = fts_search(conn, question, limit=k, bundles=bundles)
-            return [_hit(r, "fts") for r in rows]
-        if embedder is None:
-            raise ValueError("embed / hybrid には embedder が必要")
-        variant = "ctx" if mode == "hybrid_ctx" else "plain"
-        # 各系の一次取得は k 以上（bench が文書 20 件を確保するため多めに要求してくる）
-        candidates = max(CANDIDATES, k)
-        vrows = vector_search(
-            conn,
-            question,
-            embedder=embedder,
-            variant=variant,
-            limit=k if mode == "embed" else candidates,
-            ef_search=ef_search,
-            bundles=bundles,
-        )
-        if mode == "embed":
-            return [_hit(r, "embed") for r in vrows]
-        frows = fts_search(conn, question, limit=candidates, bundles=bundles)
     by_id: dict[int, dict[str, Any]] = {}
     src: dict[int, set[str]] = {}
     for r in frows:
@@ -103,18 +79,96 @@ def search(
         [
             [int(str(r["chunk_id"])) for r in frows],
             [int(str(r["chunk_id"])) for r in vrows],
-        ]
+        ],
+        weights=weights,
     )
-    hits = [
+    return [
         _hit(by_id[cid], "both" if len(src[cid]) == 2 else next(iter(src[cid])), score)
         for cid, score in fused
     ]
-    return hits[:k]
+
+
+def _rerank(question: str, hits: list[Hit], reranker: Reranker, top: int) -> list[Hit]:
+    head = hits[:top]
+    texts = [f"{h.context}\n{h.body}" if h.context else h.body for h in head]
+    scores = reranker.score(question, texts)
+    # スコア降順・同点は chunk_id 昇順（決定性）
+    order = sorted(
+        zip(head, scores, strict=True), key=lambda hs: (-hs[1], hs[0].chunk_id)
+    )
+    return [
+        Hit(
+            h.chunk_id,
+            h.bundle,
+            h.rel_path,
+            h.heading_path,
+            h.body,
+            float(s),
+            "rerank",
+            h.context,
+        )
+        for h, s in order
+    ]
+
+
+def search(
+    question: str,
+    *,
+    mode: Mode,
+    dsn: str,
+    k: int = 20,
+    embedder: Embedder | None = None,
+    ef_search: int = 40,
+    bundles: list[str] | None = None,
+    candidates: int | None = None,
+    weights: tuple[float, float] | None = None,
+    reranker: Reranker | None = None,
+    rerank_top: int = RERANK_TOP,
+    force_index: bool = False,
+) -> list[Hit]:
+    """方式ごとに検索する.
+
+    - candidates: hybrid 系の各系一次取得件数（既定 max(100, k)）
+    - weights: RRF の (fts, embed) 重み。既定は等重み
+    - reranker / rerank_top: hybrid_ctx_rerank で使う並べ直し器と対象件数
+    - force_index: ベクトル検索で HNSW 索引を強制（ef_search 実験用）
+    """
+    if mode not in MODES:
+        raise ValueError(f"mode は {MODES} のいずれか")
+    n_cand = candidates if candidates is not None else max(CANDIDATES, k)
+    conn = connect(dsn)
+    with conn:
+        if mode == "fts":
+            rows = fts_search(conn, question, limit=k, bundles=bundles)
+            return [_hit(r, "fts") for r in rows]
+        if embedder is None:
+            raise ValueError("embed / hybrid には embedder が必要")
+        variant = "plain" if mode in ("embed", "hybrid") else "ctx"
+        vrows = vector_search(
+            conn,
+            question,
+            embedder=embedder,
+            variant=variant,
+            limit=k if mode == "embed" else n_cand,
+            ef_search=ef_search,
+            bundles=bundles,
+            force_index=force_index,
+        )
+        if mode == "embed":
+            return [_hit(r, "embed") for r in vrows]
+        frows = fts_search(conn, question, limit=n_cand, bundles=bundles)
+    fused = _fuse(frows, vrows, weights)
+    if mode == "hybrid_ctx_rerank":
+        if reranker is None:
+            raise ValueError("hybrid_ctx_rerank には reranker が必要")
+        return _rerank(question, fused, reranker, rerank_top)[:k]
+    return fused[:k]
 
 
 __all__ = [
     "CANDIDATES",
     "MODES",
+    "RERANK_TOP",
     "Hit",
     "Mode",
     "NoEmbeddings",

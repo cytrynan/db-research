@@ -12,6 +12,7 @@ from dbr.features.bench.questions import Question, load_questions
 from dbr.features.bench.report import git_sha, save_json, to_markdown
 from dbr.features.search import Mode, dedupe_by_document, search
 from dbr.shared.embed import Embedder
+from dbr.shared.rerank import Reranker
 from dbr.shared.text import dict_version
 
 DOC_K = 20  # 文書単位で上位 20 まで見る（recall@20）
@@ -30,6 +31,7 @@ def run_find(
     ef_search: int = 40,
     repo: Path | None = None,
     log: Callable[[str], None] = print,
+    reranker: Reranker | None = None,
 ) -> dict[str, Any]:
     finds = [q for q in questions if q.kind == "find" and q.expected]
     # 正解パスが無い find 行は測れない。黙って母数から外さず、記録に残す
@@ -47,6 +49,7 @@ def run_find(
         "ef_search": ef_search,
         "question_count": len(finds),
         "skipped": skipped,
+        "reranker": reranker.name if reranker else None,
         "modes": {},
     }
     for mode in modes:
@@ -60,6 +63,7 @@ def run_find(
                     k=CHUNK_K,
                     embedder=embedder,
                     ef_search=ef_search,
+                    reranker=reranker,
                 )
             )[:DOC_K]
             keys = [h.doc_key for h in hits]

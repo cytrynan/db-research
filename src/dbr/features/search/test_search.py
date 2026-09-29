@@ -41,3 +41,29 @@ def test_dedupe_keeps_best_chunk_per_document() -> None:
     ]
     deduped = dedupe_by_document(hits)
     assert [h.chunk_id for h in deduped] == [1, 3]
+
+
+def test_weighted_rrf_matches_hand_calculation() -> None:
+    # 列A 重み 0.5 / 列B 重み 1.0
+    fused = dict(rrf([["x", "y"], ["y", "z"]], k=60, weights=[0.5, 1.0]))
+    assert math.isclose(fused["y"], 0.5 / 62 + 1.0 / 61)
+    assert math.isclose(fused["x"], 0.5 / 61)
+    assert math.isclose(fused["z"], 1.0 / 62)
+
+
+def test_weighted_rrf_default_equals_unweighted() -> None:
+    a = rrf([["x", "y"], ["y", "z"]])
+    b = rrf([["x", "y"], ["y", "z"]], weights=[1.0, 1.0])
+    assert a == b
+
+
+def test_weight_zero_drops_single_side_documents() -> None:
+    fused = dict(rrf([["only-fts", "y"], ["y"]], weights=[0.0, 1.0]))
+    assert "only-fts" not in fused and "y" in fused
+
+
+def test_weighted_rrf_rejects_bad_weights() -> None:
+    with pytest.raises(ValueError):
+        rrf([["a"], ["b"]], weights=[1.0])
+    with pytest.raises(ValueError):
+        rrf([["a"], ["b"]], weights=[1.0, -1.0])

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -29,10 +30,23 @@ def git_sha(repo: Path) -> str:
         return "unknown"
 
 
-def save_json(result: dict[str, Any], out_dir: Path, kind: str) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
+LABEL_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
+
+
+def result_path(out_dir: Path, kind: str, label: str | None = None) -> Path:
+    """`YYYYMMDD-<kind>[-<label>].json`。label はファイル名に入るので語彙を限定する."""
+    if label is not None and not LABEL_RE.match(label):
+        raise ValueError("label は [A-Za-z0-9_-]{1,32}")
     day = datetime.now().strftime("%Y%m%d")
-    path = out_dir / f"{day}-{kind}.json"
+    suffix = f"-{label}" if label else ""
+    return out_dir / f"{day}-{kind}{suffix}.json"
+
+
+def save_json(
+    result: dict[str, Any], out_dir: Path, kind: str, label: str | None = None
+) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = result_path(out_dir, kind, label)
     path.write_text(
         json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

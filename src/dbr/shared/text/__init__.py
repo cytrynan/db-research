@@ -28,9 +28,10 @@ def _tokenizer() -> tuple[Any, Any]:
     except ImportError as exc:  # pragma: no cover - 環境依存
         raise TokenizerUnavailable(str(exc)) from exc
     try:
+        # `.create()` は DeprecationWarning（→ `.tokenizer()`。sudachipy 0.6 系）
         tok = dictionary.Dictionary(
             dict=SUDACHI_DICT.removeprefix("sudachidict_")
-        ).create()
+        ).tokenizer()
     except Exception as exc:  # pragma: no cover - 環境依存
         raise TokenizerUnavailable(f"{SUDACHI_DICT}: {exc}") from exc
     return tok, tokenizer.Tokenizer.SplitMode.C

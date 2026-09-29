@@ -183,6 +183,22 @@ def _embedder_or_exit(model: str) -> Any:
         raise typer.Exit(code=5) from None
 
 
+def _reranker_or_exit(name: str) -> Any:
+    from dbr.shared.rerank import RerankerUnavailable, get_reranker
+
+    try:
+        return get_reranker(name)
+    except RerankerUnavailable as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=5) from None
+
+
+RerankerOpt = Annotated[
+    str, typer.Option("--reranker", help="cross-encoder のモデル名（fake で配線確認）")
+]
+DEFAULT_RERANKER_NAME = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+
+
 @app.command()
 def ask(
     question: Annotated[str, typer.Argument()],
@@ -190,6 +206,7 @@ def ask(
     kind: Annotated[str, typer.Option("--kind", help="auto | find | count")] = "auto",
     k: Annotated[int, typer.Option("--k")] = 5,
     model: Annotated[str, typer.Option("--model")] = "intfloat/multilingual-e5-small",
+    reranker: RerankerOpt = DEFAULT_RERANKER_NAME,
     dsn: DsnOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
@@ -212,9 +229,17 @@ def ask(
             typer.echo(f"--mode は {MODES} のいずれか", err=True)
             raise typer.Exit(code=2)
         emb = None if mode == "fts" else _embedder_or_exit(model)
+        rr = _reranker_or_exit(reranker) if mode == "hybrid_ctx_rerank" else None
         try:
             hits = dedupe_by_document(
-                search(question, mode=mode, dsn=resolve_dsn(dsn), k=k * 5, embedder=emb)  # type: ignore[arg-type]
+                search(
+                    question,
+                    mode=mode,  # type: ignore[arg-type]
+                    dsn=resolve_dsn(dsn),
+                    k=k * 5,
+                    embedder=emb,
+                    reranker=rr,
+                )
             )[:k]
         except NoEmbeddings as exc:
             typer.echo(str(exc), err=True)
@@ -286,38 +311,76 @@ def bench(
     out: Annotated[Path, typer.Option("--out")] = REPO_ROOT / "bench" / "results",
     ef_search: Annotated[int, typer.Option("--ef-search")] = 40,
     model: Annotated[str, typer.Option("--model")] = "intfloat/multilingual-e5-small",
+    reranker: RerankerOpt = DEFAULT_RERANKER_NAME,
+    label: Annotated[
+        str | None,
+        typer.Option("--label", help="ファイル名に付ける版ラベル [A-Za-z0-9_-]"),
+    ] = None,
     dsn: DsnOpt = None,
 ) -> None:
-    """質問セットを方式ごとに流し、recall@5 / recall@20 / MRR を JSON と表で出す."""
+    """質問セットを流して指標を JSON と表で出す（--kind find | sweep | hnsw）."""
     from dbr.features.bench import load_questions, run_find, save_json, to_markdown
+    from dbr.features.bench.hnsw import hnsw_markdown, run_hnsw
+    from dbr.features.bench.report import LABEL_RE
+    from dbr.features.bench.sweep import run_sweep, sweep_markdown
     from dbr.features.search import MODES, NoEmbeddings
 
-    if kind != "find":
-        typer.echo("この単位で測れるのは --kind find だけです", err=True)
+    if kind not in {"find", "sweep", "hnsw"}:
+        typer.echo("--kind は find | sweep | hnsw", err=True)
         raise typer.Exit(code=2)
-    mode_list = [m.strip() for m in modes.split(",") if m.strip()]
-    bad = [m for m in mode_list if m not in MODES]
-    if bad:
-        typer.echo(f"未知の mode: {bad}（{MODES}）", err=True)
+    if label is not None and not LABEL_RE.match(label):
+        typer.echo("--label は [A-Za-z0-9_-]{1,32}", err=True)
         raise typer.Exit(code=2)
-    emb = None if mode_list == ["fts"] else _embedder_or_exit(model)
+    qs = load_questions(questions)
+    log = lambda m: typer.echo(m, err=True)  # noqa: E731 - 1行の配線
     try:
-        result = run_find(
-            load_questions(questions),
-            mode_list,  # type: ignore[arg-type]
-            dsn=resolve_dsn(dsn),
-            embedder=emb,
-            ef_search=ef_search,
-            repo=REPO_ROOT,
-            log=lambda m: typer.echo(m, err=True),
-        )
+        if kind == "find":
+            mode_list = [m.strip() for m in modes.split(",") if m.strip()]
+            bad = [m for m in mode_list if m not in MODES]
+            if bad:
+                typer.echo(f"未知の mode: {bad}（{MODES}）", err=True)
+                raise typer.Exit(code=2)
+            emb = None if mode_list == ["fts"] else _embedder_or_exit(model)
+            rr = (
+                _reranker_or_exit(reranker)
+                if "hybrid_ctx_rerank" in mode_list
+                else None
+            )
+            result = run_find(
+                qs,
+                mode_list,  # type: ignore[arg-type]
+                dsn=resolve_dsn(dsn),
+                embedder=emb,
+                ef_search=ef_search,
+                repo=REPO_ROOT,
+                log=log,
+                reranker=rr,
+            )
+            text = to_markdown(result)
+        elif kind == "sweep":
+            result = run_sweep(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                ef_search=ef_search,
+                repo=REPO_ROOT,
+            )
+            text = sweep_markdown(result)
+        else:
+            result = run_hnsw(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                repo=REPO_ROOT,
+            )
+            text = hnsw_markdown(result)
     except NoEmbeddings as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=5) from None
     except LoopbackViolation as exc:
         raise _exit_on_loopback(exc) from None
-    path = save_json(result, out, kind)
-    typer.echo(to_markdown(result))
+    path = save_json(result, out, kind, label)
+    typer.echo(text)
     typer.echo(f"\nJSON: {path}")
 
 

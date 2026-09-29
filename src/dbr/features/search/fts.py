@@ -14,7 +14,7 @@ import psycopg
 from dbr.shared.text import tokenize
 
 SQL = """
-SELECT c.id AS chunk_id, d.bundle, d.rel_path, c.heading_path, c.body,
+SELECT c.id AS chunk_id, d.bundle, d.rel_path, c.heading_path, c.body, c.context,
        ts_rank_cd(c.tsv, q) AS score
 FROM chunk c
 JOIN document d ON d.id = c.document_id,
