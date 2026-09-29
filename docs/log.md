@@ -8,6 +8,9 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — ② v7 節に判定器の修正（count bench に正解ビュー照合 view_ok／all_views_ok・再測定 4/4 一致）を追記 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — 受入検証 R6: Fact 制約「旧行の valid_to を閉じて新行を挿入・削除しない」を実装どおり（bundle 単位の全削除→再挿入）に訂正、Temporal 節に dated_text、Overview に陳腐化検知の範囲 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — `v_verified` は deprecated も数える（`v_unverified` とは補集合でない）ことを明記（受入検証の境界ケースより） (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — ② v7 節（Q12 を `v_verified` で再測定・4/4 stable）、recorded_at 規則と source_hash 陳腐化 WARN の実データ確認を追記 (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — Fact の recorded_at 規則（generated.at、無ければ valid_from）と valid_source に dated_text、識別子を実装どおり（md5(value)・0010）に、Counter に `v_verified`（0011）、Overview に source_hash の陳腐化 WARN と `--check` を追記 (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — Q12 の期待を `v_unverified` の補集合から `v_verified` へ（問いの定義そのものをビューに固定） (kuroko/claude-fable-5-1)

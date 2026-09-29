@@ -153,3 +153,15 @@ def test_result_path_label_rules(tmp_path: Path) -> None:
             result_path(tmp_path, "find", bad)
     p = save_json({"a": 1}, tmp_path, "find", "v5")
     assert p.exists() and not plain.exists()  # ラベル付きは既存を上書きしない
+
+
+def test_parse_row_extracts_count_view() -> None:
+    from dbr.features.bench.questions import parse_row
+
+    row = "| Q12 | 確認済みは何件？ | count | `v_verified`（bundle='references'） | |"
+    q = parse_row(row)
+    assert q is not None and q.views == ("v_verified",) and q.expected == ()
+    q2 = parse_row(
+        "| Q11 | 何件？ | count | v_by_bundle | |"
+    )  # バッククォート無しは拾わない
+    assert q2 is not None and q2.views == ()

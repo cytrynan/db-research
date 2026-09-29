@@ -9,10 +9,10 @@
   - `doc_source_hash(fm, headings) -> str` ＝ `_h(json.dumps(fm, ensure_ascii=False, sort_keys=True, default=str) + "\n".join(headings))`
   - `bundle_source_hash(bundle_lines) -> str` ＝ `_h("\n".join(bundle_lines))`
   - `bundle_line(rel_path, desc) -> str` ＝ `f"- {rel_path}: {desc or '(description なし)'}"`
-- `@dataclass StaleSummary(level: str, target_key: str, reason: Literal["changed", "missing"])`
+- `@dataclass StaleSummary(bundle: str, level: str, target_key: str, reason: str)`（reason は 'changed' | 'missing'。bundle は WARN の案内文に使う）
 - `stale_summaries(dsn, bundles, levels=("bundle", "document")) -> list[StaleSummary]`: bundle ごとに document を rel_path 順に読み、期待ハッシュを作って `summary.source_hash` と比較。本文は返さない
 - `overview.answer()`: bundle 決定後に `stale_summaries(dsn, bundles)` を呼び、件数を warnings に。例外は握らない
-- CLI `summarize --check`: run_summarize を呼ばず stale_summaries だけ。1 行 1 件 `level target_key reason` を stderr でなく stdout に。exit 6 = 陳腐化あり（README の exit 表に追加）
+- CLI `summarize --check`: run_summarize を呼ばず stale_summaries だけ。1 行 1 件 `level target_key reason` を stderr でなく stdout に。exit 6 = 陳腐化あり（functional-design の Overview 節と CLI ヘルプに記載。README に exit 表は無い＝受入検証で訂正）
 
 ## 2. recorded_at（`ingest/facts.py`）
 

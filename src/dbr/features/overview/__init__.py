@@ -91,9 +91,12 @@ def answer(
     # 要約は元テキストの source_hash を持つ。変わっていたら黙って古い要約を出さず WARN
     stale = stale_summaries(dsn, bundles)
     if stale:
-        targets = ", ".join(sorted({s.bundle for s in stale}))
+        changed = sum(1 for s in stale if s.reason == "changed")
+        cmds = " / ".join(
+            f"dbr summarize --bundle {b}" for b in sorted({s.bundle for s in stale})
+        )
         out.warnings.append(
-            f"要約が古い: {len(stale)} 件（dbr summarize --bundle {targets}）"
+            f"要約が古い: 変更 {changed} 件・無い {len(stale) - changed} 件（{cmds}）"
         )
 
     mode: Mode = "embed_ctx" if embedder is not None else "fts"

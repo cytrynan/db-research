@@ -72,7 +72,7 @@ def test_stale_summaries_detects_changed_source_and_cli_check(
     }
     assert all(s.bundle == "references" for s in stale)
     a = answer("references の扶養は全体としてどう？", dsn=clean_db, embedder=None)
-    assert any("要約が古い: 2 件" in w for w in a.warnings)
+    assert any("要約が古い: 変更 2 件・無い 0 件" in w for w in a.warnings)
     r = runner.invoke(
         app, ["summarize", "--bundle", "references", "--check", "--dsn", clean_db]
     )

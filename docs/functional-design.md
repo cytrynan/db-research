@@ -135,7 +135,7 @@ class Fact:
 
 **制約**:
 - 識別子は `(document_id, COALESCE(chunk_id,0), subject, valid_from, md5(value))`（0008→0010）。設計時案の部分一意 `(subject) WHERE valid_to IS NULL` は valid_to を自動で閉じない方針のため未採用
-- 更新は「旧行の `valid_to` を閉じて新行を挿入」。削除しない
+- 再抽出は bundle 単位で**全削除→再挿入**（決定的＝同じ入力なら同じ行。`valid_to` を閉じる更新はしない。設計時案「旧行の valid_to を閉じて新行を挿入・削除しない」は未採用＝2026-09-29 受入検証 R6 で訂正）
 - `valid_source = 'inferred'` の行は、③の回答で「暫定」と明示する
 
 ### エンティティ: Summary（④ 全体用・要約階層）
@@ -303,7 +303,7 @@ class Searcher:
 | ビュー | 定義 |
 |---|---|
 | `v_unverified` | `verified_at IS NULL AND status <> 'deprecated'` の件数（bundle 別） |
-| `v_verified` | `verified_at IS NOT NULL` の件数（bundle 別。0011・2026-09-29 追加＝Q12「確認済みは何件」を補集合でなく定義そのもので答える） |
+| `v_verified` | `verified_at IS NOT NULL` の件数（bundle 別。0011・2026-09-29 追加＝Q12「確認済みは何件」を補集合でなく定義そのもので答える）。**`status: deprecated` も数える**（判定は verified_at の有無だけ。`v_unverified` は deprecated を除くので、2 つは補集合ではない） |
 | `v_by_type` | `type` 別件数 |
 | `v_stale` | `stale_after < current_date` の件数 |
 | `v_by_bundle` | bundle 別件数・チャンク数・平均トークン |
@@ -321,7 +321,7 @@ class Counter:
 **インターフェース**:
 ```python
 class FactExtractor:
-    def extract(self, doc: ParsedDoc) -> list[Fact]: ...   # fm.valid があれば explicit、無ければ generated.at で inferred
+    def extract(self, doc: ParsedDoc) -> list[Fact]: ...   # fm.valid → explicit／本文・見出しの「日付＋動詞」行 → dated_text／どちらも無ければ generated.at で inferred
 
 class Temporal:
     def as_of(self, subject: str, at: datetime) -> list[Fact]: ...
@@ -329,11 +329,11 @@ class Temporal:
     def history(self, subject: str) -> list[Fact]: ...   # valid_from 順
 ```
 
-**MVP の範囲**: `Fact` は**フロントマターの `valid` キーと決定台帳（`decisions.md` の行）から機械抽出**する。本文からの自由抽出（LLM）は Post-MVP。
+**MVP の範囲**: `Fact` は**フロントマターの `valid` キーと、本文・見出しの「YYYY-MM-DD＋動詞」行（同一行 20 字窓・次の日付で打ち切り）から機械抽出**する（2026-09-29 実装。設計時の「決定台帳の行から」は dated_text がそれを包含）。本文からの自由抽出（LLM）は Post-MVP。
 
 ### Overview（F6・④ 全体）
 
-**責務**: 要約階層の生成と参照（P1）。要約は元テキストの `source_hash` を持ち、回答時に同じ関数で再計算して違えば「要約が古い」と WARN する（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。section レベルは対象外）
+**責務**: 要約階層の生成と参照（P1）。要約は元テキストの `source_hash` を持ち、回答時に同じ関数で再計算して違えば「要約が古い」と WARN する（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。section レベルは対象外）。検知の範囲: bundle のハッシュは各文書の rel_path＋description だけを覆い、種別・未確認・期限切れの件数の変化は document レベルの changed で捕まえる。「期限切れ（今日時点）」は日付の進行だけで古くなるのでハッシュでは検知しない（要約の作り直しは運用で）
 
 **インターフェース**:
 ```python

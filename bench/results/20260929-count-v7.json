@@ -1,10 +1,12 @@
 {
   "all_stable": true,
+  "all_views_ok": true,
   "date": "2026-09-29",
-  "git_sha": "e3505cb-dirty",
+  "git_sha": "3795732-dirty",
   "kind": "count",
   "per_question": [
     {
+      "expected_view": "v_by_bundle",
       "id": "Q11",
       "rows": [
         {
@@ -24,9 +26,11 @@
         }
       ],
       "stable": true,
-      "view": "v_by_bundle"
+      "view": "v_by_bundle",
+      "view_ok": true
     },
     {
+      "expected_view": "v_verified",
       "id": "Q12",
       "rows": [
         {
@@ -43,9 +47,11 @@
         }
       ],
       "stable": true,
-      "view": "v_verified"
+      "view": "v_verified",
+      "view_ok": true
     },
     {
+      "expected_view": "v_stale",
       "id": "Q13",
       "rows": [
         {
@@ -54,9 +60,11 @@
         }
       ],
       "stable": true,
-      "view": "v_stale"
+      "view": "v_stale",
+      "view_ok": true
     },
     {
+      "expected_view": "v_by_type",
       "id": "Q14",
       "rows": [
         {
@@ -131,7 +139,8 @@
         }
       ],
       "stable": true,
-      "view": "v_by_type"
+      "view": "v_by_type",
+      "view_ok": true
     }
   ],
   "question_count": 4,

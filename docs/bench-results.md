@@ -191,6 +191,8 @@ status: draft
 | Q13 期限切れの件数 | `v_stale` | ○ | 1 |
 | Q14 type 別の件数 | `v_by_type` | ○ | 14 |
 
+**判定器の修正（受入検証の指摘）**: count bench は「3 回同値」しか見ておらず、Q12 が誤ったビューのまま以前から「4/4 stable」だった。期待欄の `v_xxx` と選んだビューの一致（`view_ok`／`all_views_ok`）を bench に足し、再測定した JSON は `all_views_ok=true`（4 問とも一致・git `3795732-dirty`）。期待の無い問いは view_ok=None＝正解扱いにしない（前単位 D5 と同型）。
+
 同じ単位で、fact の `recorded_at` を「generated.at が無ければ valid_from」に直した（実データ: memory で 6 件が該当。references／dev は 0）。summary の `source_hash` は保存だけだったので、回答時に再計算して違えば「要約が古い」と WARN する形にした（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。実データは 3 bundle とも 0 件）。
 
 ### ④ 全体（Q19〜Q20）— 自動採点なし

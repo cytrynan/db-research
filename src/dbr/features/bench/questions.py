@@ -1,4 +1,4 @@
-"""docs/questions.md の表を読む。正解はバッククォート内の bundle/rel_path.md だけ."""
+"""docs/questions.md の表を読む。正解はバッククォート内のパス・日付・ビュー名."""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ DATE_RE = re.compile(
     r"`(20\d{2}-\d{2}-\d{2})`"
 )  # asof の正解日付もバッククォートで書く
 ROW_RE = re.compile(r"^\|\s*(Q\d+)\s*\|")
+VIEW_RE = re.compile(
+    r"`(v_[a-z_]+)`"
+)  # count の正解ビュー（受入検証 2026-09-29 で追加）
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,7 @@ class Question:
     kind: str
     expected: tuple[str, ...]  # 'references/health.md' 形式（bundle/rel_path）
     dates: tuple[str, ...] = ()  # asof の正解日付 'YYYY-MM-DD'
+    views: tuple[str, ...] = ()  # count の正解ビュー 'v_xxx'
 
 
 def parse_row(line: str) -> Question | None:
@@ -36,6 +40,7 @@ def parse_row(line: str) -> Question | None:
         kind,
         tuple(PATH_RE.findall(expected)),
         tuple(DATE_RE.findall(expected)),
+        tuple(VIEW_RE.findall(expected)),
     )
 
 

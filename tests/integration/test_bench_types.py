@@ -22,8 +22,8 @@ pytestmark = pytest.mark.db
 
 NOTE = ("references/decisions-note.md",)
 QS = [
-    Question("Q11", "references のファイルは何件？", "count", ()),
-    Question("Q13", "期限切れの記録はいくつ？", "count", ()),
+    Question("Q11", "references のファイルは何件？", "count", (), (), ("v_by_bundle",)),
+    Question("Q13", "期限切れの記録はいくつ？", "count", (), (), ("v_stale",)),
     Question("Q15", "扶養の制度知識を分けたのはいつ？", "asof", NOTE, ("2026-08-11",)),
     Question(
         "Q18",
@@ -48,6 +48,13 @@ def test_run_count_is_stable(clean_db: str) -> None:
     res = run_count(QS, dsn=clean_db)
     assert res["question_count"] == 2 and res["all_stable"] is True
     assert {p["view"] for p in res["per_question"]} == {"v_by_bundle", "v_stale"}
+    assert res["all_views_ok"] is True  # 期待ビューとの一致も測る
+    # 期待ビューが無い問いは view_ok=None で all_views_ok は False（正解扱いにしない）
+    no_exp = run_count(
+        [Question("Qx", "references のファイルは何件？", "count", ())], dsn=clean_db
+    )
+    assert no_exp["per_question"][0]["view_ok"] is None
+    assert no_exp["all_views_ok"] is False
 
 
 def test_run_asof_scores_by_file_and_date(clean_db: str) -> None:
@@ -95,7 +102,7 @@ def test_cli_bench_count_asof_overview_and_ask_all_kinds(
     qfile = tmp_path / "q.md"
     qfile.write_text(
         "| # | 質問 | 型 | 期待 | 備考 |\n|---|---|---|---|---|\n"
-        "| Q11 | references のファイルは何件？ | count | v_by_bundle | |\n"
+        "| Q11 | references のファイルは何件？ | count | `v_by_bundle` | |\n"
         "| Q15 | 扶養の制度知識を分けたのはいつ？ | asof | "
         "`references/decisions-note.md` `2026-08-11` | |\n"
         "| Q19 | references の記録は全体としてどう？ | overview | - | |\n",
