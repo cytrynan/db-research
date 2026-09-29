@@ -13,14 +13,14 @@ from typing import Any
 from dbr.features.bench.metrics import mrr, rank_of, recall_at
 from dbr.features.bench.questions import Question
 from dbr.features.bench.report import git_sha
-from dbr.features.search import AGGS, Mode, aggregate_by_document, search
+from dbr.features.search import AGG_CHUNKS, AGGS, Mode, aggregate_by_document, search
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
 from dbr.shared.text import dict_version
 
 RERANK_TOPS: tuple[int, ...] = (20, 50, 100, 150)
 DOC_K = 20
-CHUNK_K = 500
+CHUNK_K = AGG_CHUNKS
 
 
 def configs(rerank_tops: tuple[int, ...]) -> list[tuple[Mode, int | None]]:
@@ -97,7 +97,10 @@ def tune_markdown(result: dict[str, Any]) -> str:
         "|---|" + "---|" * len(aggs),
     ]
     by = {(c["mode"], c["rerank_top"], c["agg"]): c for c in result["cells"]}
-    keys = sorted({(c["mode"], c["rerank_top"]) for c in result["cells"]}, key=str)
+    keys = sorted(
+        {(c["mode"], c["rerank_top"]) for c in result["cells"]},
+        key=lambda mt: (mt[0], -1 if mt[1] is None else int(mt[1])),  # 数値順
+    )
     for mode, top in keys:
         row = f"{mode}" + (f" / {top}" if top is not None else "")
         cells = []

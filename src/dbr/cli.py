@@ -209,6 +209,10 @@ def ask(
     agg: Annotated[
         str, typer.Option("--agg", help="find の文書集約 max | rrf_all | rrf_top3")
     ] = "rrf_top3",  # D-14（v8）
+    rerank_top: Annotated[
+        int | None,
+        typer.Option("--rerank-top", help="並べ直す候補数。省略でモード別既定"),
+    ] = None,
     kind: Annotated[
         str, typer.Option("--kind", help="auto | find | count | asof | overview")
     ] = "auto",
@@ -226,6 +230,7 @@ def ask(
     from dbr.features.classify import RuleClassifier
     from dbr.features.count import VIEWS, ask_view
     from dbr.features.search import (
+        AGG_CHUNKS,
         AGGS,
         MODES,
         NoEmbeddings,
@@ -263,15 +268,19 @@ def ask(
             raise typer.Exit(code=2)
         emb = None if mode == "fts" else _embedder_or_exit(model)
         rr = _reranker_or_exit(reranker) if mode.endswith("_rerank") else None
+        # 集約 rrf_* は下位断片の和も見るので bench と同じ断片数（AGG_CHUNKS）で
+        # 検索する（受入検証 R4(a): 25 断片では測定と順位が食い違った）。max は k*5
+        n_chunks = k * 5 if agg == "max" else max(AGG_CHUNKS, k)
         try:
             hits = aggregate_by_document(
                 search(
                     question,
                     mode=mode,  # type: ignore[arg-type]
                     dsn=resolve_dsn(dsn),
-                    k=k * 5,
+                    k=n_chunks,
                     embedder=emb,
                     reranker=rr,
+                    rerank_top=rerank_top,
                 ),
                 agg,
             )[:k]
@@ -436,6 +445,10 @@ def bench(
         str,
         typer.Option("--agg", help="find の文書集約（既定 max＝v4〜v8 と比較可能）"),
     ] = "max",
+    rerank_top: Annotated[
+        int | None,
+        typer.Option("--rerank-top", help="find: 並べ直す候補数（省略で既定）"),
+    ] = None,
     dsn: DsnOpt = None,
 ) -> None:
     """質問セットを流して指標を出す.
@@ -488,6 +501,7 @@ def bench(
                 log=log,
                 reranker=rr,
                 agg=agg,
+                rerank_top=rerank_top,
             )
             text = to_markdown(result)
         elif kind == "count":

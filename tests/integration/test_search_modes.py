@@ -112,6 +112,15 @@ def test_embed_ctx_rerank_uses_only_embedding_candidates(
     assert all(h.context is not None for h in a[:3])
     with pytest.raises(ValueError):
         search("x", mode="embed_ctx_rerank", dsn=clean_db, embedder=fake)
+    with pytest.raises(ValueError):
+        search(
+            "x",
+            mode="embed_ctx_rerank",
+            dsn=clean_db,
+            embedder=fake,
+            reranker=rr,
+            rerank_top=0,
+        )
     # rerank_top 省略時はモード別既定（embed_ctx_rerank は RERANK_TOP_EMBED=20）
     c = search(
         "規約外キー",

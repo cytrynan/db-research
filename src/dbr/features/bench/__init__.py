@@ -10,7 +10,7 @@ from typing import Any
 from dbr.features.bench.metrics import mrr, rank_of, recall_at
 from dbr.features.bench.questions import Question, load_questions
 from dbr.features.bench.report import git_sha, save_json, to_markdown
-from dbr.features.search import AGGS, Mode, aggregate_by_document, search
+from dbr.features.search import AGG_CHUNKS, AGGS, Mode, aggregate_by_document, search
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
 from dbr.shared.text import dict_version
@@ -18,8 +18,9 @@ from dbr.shared.text import dict_version
 DOC_K = 20  # 文書単位で上位 20 まで見る（recall@20）
 # 断片を文書に畳むと件数が減るので、断片は文書 20 件を確実に確保できる数を取る。
 # 100 だと上位 100 断片に 20 文書が含まれず 11〜20 位の文書が消えることがある
-# （2026-09-29 受入検証で指摘・現データの hybrid Q09 は 16 文書しか残らなかった）
-CHUNK_K = 500
+# （2026-09-29 受入検証で指摘・現データの hybrid Q09 は 16 文書しか残らなかった）。
+# 集約 rrf_* の断片数と同じ値（ask と bench で計算を揃える）
+CHUNK_K = AGG_CHUNKS
 
 
 def run_find(
@@ -33,6 +34,7 @@ def run_find(
     log: Callable[[str], None] = print,
     reranker: Reranker | None = None,
     agg: str = "max",
+    rerank_top: int | None = None,
 ) -> dict[str, Any]:
     if agg not in AGGS:
         raise ValueError(f"agg は {AGGS} のいずれか")
@@ -54,6 +56,7 @@ def run_find(
         "skipped": skipped,
         "reranker": reranker.name if reranker else None,
         "agg": agg,
+        "rerank_top": rerank_top,  # None＝モード別既定（hybrid 150／embed 20）
         "modes": {},
     }
     for mode in modes:
@@ -68,6 +71,7 @@ def run_find(
                     embedder=embedder,
                     ef_search=ef_search,
                     reranker=reranker,
+                    rerank_top=rerank_top,
                 ),
                 agg,
             )[:DOC_K]

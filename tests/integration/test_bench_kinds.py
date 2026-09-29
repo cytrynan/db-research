@@ -154,6 +154,46 @@ def test_cli_ask_rerank_mode_with_fake(clean_db: str) -> None:
         app, ["ask", "規約外キーはどこに書いた？", "--model", "fake", "--dsn", clean_db]
     )  # 既定（D-14）: embed_ctx + rrf_top3
     assert r.exit_code == 0 and "mode=embed_ctx / agg=rrf_top3" in r.output, r.output
+
+
+def test_cli_ask_rrf_agg_searches_agg_chunks(
+    clean_db: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """集約 rrf_* の ask は bench と同じ断片数（AGG_CHUNKS）で検索する（R4(a)）."""
+    import dbr.features.search as sm
+    from dbr.features.search import AGG_CHUNKS
+
+    _prepare(clean_db)
+    seen: list[int] = []
+    real = sm.search
+
+    def spy(*a: object, **kw: object) -> object:
+        seen.append(int(str(kw["k"])))
+        return real(*a, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(sm, "search", spy)
+    r = CliRunner().invoke(
+        app,
+        ["ask", "規約外キー", "--kind", "find", "--model", "fake", "--dsn", clean_db],
+    )
+    assert r.exit_code == 0 and seen == [AGG_CHUNKS], (r.output, seen)
+    seen.clear()
+    r = CliRunner().invoke(
+        app,
+        [
+            "ask",
+            "規約外キー",
+            "--kind",
+            "find",
+            "--agg",
+            "max",
+            "--model",
+            "fake",
+            "--dsn",
+            clean_db,
+        ],
+    )
+    assert r.exit_code == 0 and seen == [25], (r.output, seen)  # max は k*5 のまま
     r = CliRunner().invoke(
         app, ["ask", "x", "--kind", "find", "--agg", "mean", "--dsn", clean_db]
     )

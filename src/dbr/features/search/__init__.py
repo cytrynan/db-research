@@ -29,9 +29,13 @@ Agg = Literal["max", "rrf_all", "rrf_top3"]
 AGGS: tuple[str, ...] = get_args(Agg)
 CANDIDATES = 100  # 各系の一次取得件数（既定）
 RERANK_TOP = 150  # hybrid_ctx_rerank: 並べ直しに渡す融合上位の件数
-# embed_ctx_rerank: 並べ直す埋め込み候補の件数。v8 tune で 20 が最良（10/15 は Q08 が
-# 窓に入らず、30 以上は Q06 を落とす）。N=10 の 1 問差なので暫定（D-14）
+# embed_ctx_rerank: 並べ直す埋め込み候補の件数。v8 tune（集約 rrf_top3）では 20〜50 が
+# recall@5 1.00 で、20 が MRR 最良（0.803）。max 集約では 10/15 が Q08 を窓に入れず、
+# 30 以上で Q06 を落とした。N=10 なので暫定（D-14）
 RERANK_TOP_EMBED = 20
+# 断片→文書の集約（rrf_*）に使う断片数。集約は下位断片の和を足すので、少ない断片で
+# 計算すると順位が変わる（受入検証 R4(a)・2026-09-29）。bench と ask で同じ値を使う
+AGG_CHUNKS = 500
 
 
 @dataclass(frozen=True)
@@ -188,6 +192,8 @@ def search(
     n_cand = candidates if candidates is not None else max(CANDIDATES, k)
     if rerank_top is None:
         rerank_top = RERANK_TOP_EMBED if mode == "embed_ctx_rerank" else RERANK_TOP
+    if rerank_top <= 0:
+        raise ValueError("rerank_top は正の整数")
     conn = connect(dsn)
     with conn:
         if mode == "fts":
@@ -230,6 +236,7 @@ def search(
 
 __all__ = [
     "AGGS",
+    "AGG_CHUNKS",
     "CANDIDATES",
     "MODES",
     "RERANK_TOP",

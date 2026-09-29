@@ -8,6 +8,7 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md) — 受入検証 R4 の訂正: 「8 問が 1 位」→ 7 問、並べ直しの窓幅の感度を集約 max でなく rrf_top3 の値で記述、`ask` 既定は bench と同じ 500 断片で集約する旨を追記 (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v8 節（embed_ctx_rerank・文書集約 3 種・rerank_top 10〜150 の格子。並べ直し器は Q02/Q06 を落とす／rrf_top3 は損なしで MRR 0.807→0.861／rerank_top 20 は 1 問依存で脆い）と総括の ① 行を更新 (kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-14: ① 探し物の既定＝embed_ctx＋rrf_top3（暫定・N=10）。並べ直しは既定にしない (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — Search(F3) に embed_ctx_rerank・文書集約 Agg・`ask` の既定（D-14）を追記 (kuroko/claude-fable-5-1)

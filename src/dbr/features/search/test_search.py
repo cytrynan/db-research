@@ -91,12 +91,18 @@ def test_aggregate_top3_caps_and_ties_break_by_best_rank() -> None:
     assert math.isclose(b_all, sum(1 / (60 + r) for r in range(2, 7)))
     assert math.isclose(b_top3, sum(1 / (60 + r) for r in range(2, 5)))
     assert b_all > b_top3  # rrf_all だけ 5,6 位の分が増える
-    # 同点（各 1 断片）は最良断片の順位順
-    tie = [_h(1, "x.md", 1.0), _h(2, "y.md", 1.0)]
-    assert [x.rel_path for x in aggregate_by_document(tie, "rrf_all")] == [
-        "x.md",
-        "y.md",
-    ]
+    # 本当の同点: p=順位(3,45)・q=順位(10,30) はどちらも 8/315
+    # → 最良断片の順位が小さい p が先
+    tie: list[Hit] = []
+    for rank in range(1, 46):
+        doc = {3: "p.md", 45: "p.md", 10: "q.md", 30: "q.md"}.get(rank, f"f{rank}.md")
+        tie.append(_h(rank, doc, 1.0))
+    agg = aggregate_by_document(tie, "rrf_all")
+    sp = next(x for x in agg if x.rel_path == "p.md")
+    sq = next(x for x in agg if x.rel_path == "q.md")
+    assert math.isclose(sp.score, sq.score) and math.isclose(sp.score, 8 / 315)
+    assert agg.index(sp) < agg.index(sq)
+    assert aggregate_by_document([], "rrf_top3") == []
     with pytest.raises(ValueError):
         aggregate_by_document(tie, "mean")
     assert AGGS == ("max", "rrf_all", "rrf_top3")
