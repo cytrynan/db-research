@@ -79,6 +79,54 @@ def test_to_markdown_has_summary_and_per_question_rows() -> None:
     assert "| Q02 | 9 |" in md
 
 
+def test_sweep_grid_and_markdown() -> None:
+    from dbr.features.bench.sweep import grid, sweep_markdown
+
+    g = grid((0.0, 1.0), (20, 100))
+    assert g == [(0.0, 20), (0.0, 100), (1.0, 20), (1.0, 100)]
+    result = {
+        "date": "2026-09-29",
+        "git_sha": "abc",
+        "mode": "hybrid_ctx",
+        "question_count": 2,
+        "cells": [
+            {"w_fts": w, "candidates": c, "recall@5": 0.5, "recall@20": 1.0, "mrr": 0.6}
+            for w, c in g
+        ],
+        "best": {"w_fts": 1.0, "candidates": 100},
+    }
+    md = sweep_markdown(result)
+    assert "| w_fts \\ candidates | 20 | 100 |" in md
+    assert "| 0.0 | 0.50 / 1.00 / 0.600 | 0.50 / 1.00 / 0.600 |" in md
+    assert "w_fts=1.0, candidates=100" in md
+
+
+def test_hnsw_overlap_and_markdown() -> None:
+    from dbr.features.bench.hnsw import hnsw_markdown, overlap_at_k
+
+    assert overlap_at_k([1, 2, 3, 4], [1, 2, 9, 8], 4) == 0.5
+    assert overlap_at_k([1, 2], [1, 2], 2) == 1.0
+    assert overlap_at_k([], [1], 1) == 0.0
+    with pytest.raises(ValueError):
+        overlap_at_k([1], [1], 0)
+    result = {
+        "date": "2026-09-29",
+        "git_sha": "abc",
+        "model": "fake",
+        "variant": "plain",
+        "k": 20,
+        "repeats": 3,
+        "question_count": 10,
+        "exact": {"latency_ms_median": 12.34},
+        "index_used_when_forced": True,
+        "ef": [
+            {"ef_search": 40, "recall@20_vs_exact": 0.95, "latency_ms_median": 3.21}
+        ],
+    }
+    md = hnsw_markdown(result)
+    assert "12.3 ms" in md and "| 40 | 0.950 | 3.2 |" in md and "True" in md
+
+
 def test_result_path_label_rules(tmp_path: Path) -> None:
     from dbr.features.bench.report import result_path, save_json
 
