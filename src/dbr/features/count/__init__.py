@@ -17,6 +17,7 @@ VIEWS: MappingProxyType[str, str] = MappingProxyType(
         "v_by_bundle": "SELECT * FROM v_by_bundle",
         "v_by_type": "SELECT * FROM v_by_type",
         "v_unverified": "SELECT * FROM v_unverified",
+        "v_verified": "SELECT * FROM v_verified",
         "v_stale": "SELECT * FROM v_stale",
     }
 )
@@ -52,8 +53,11 @@ def ask_view(name: str, dsn: str) -> list[dict[str, Any]]:
 def guess_view(question: str) -> str | None:
     """② の質問 → ビュー名。語彙の固定対応だけ（LLM に SQL を書かせない）."""
     q = question.lower()
-    if "verified" in q or "確認済" in q or "未確認" in q:
+    # 否定形を先に判定する（"unverified" は "verified" を部分文字列に含む）
+    if "unverified" in q or "未確認" in q:
         return "v_unverified"
+    if "verified" in q or "確認済" in q:
+        return "v_verified"
     if "stale" in q or "期限" in q:
         return "v_stale"
     if "type" in q or "種別" in q:

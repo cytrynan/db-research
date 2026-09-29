@@ -180,6 +180,19 @@ status: draft
 
 **訂正（v6 の「発見 2」を取り下げる）**: v6 で「同じ申告の日付が INDEX.md では 2026-08-11、work.md 本文では 2026-08-10 と食い違う」と書いたが、**work.md に 2026-08-10 の記載は無い**（grep 0 件・2026-08-11 は 5 件。受入検証が反証）。DB の `valid_from`（timestamptz）が接続 TZ の UTC で `2026-08-10 15:00:00+00` と表示されたのを、くろこが日付部分だけ読んで「本文の日付」と誤認した。asof の表示層では `_dt` で JST に戻していたが、**DB を直接見た時の目視には同じ罠が効いた**。学びは「記録の不整合」ではなく「**timestamptz は目で読む時も JST に変換してから日付を読む。実データについて『発見』と書く前に原本を grep する**」。
 
+### ② v7（2026-09-29・Q12 の定義を `v_verified` に変えて再測定）— 4/4 stable
+
+> 一次記録: `bench/results/20260929-count-v7.json`（git `e3505cb-dirty`）。受入検証の未回収分「Q12 を `v_unverified` の補集合で答えていた」を、ビュー `v_verified`（`verified_at IS NOT NULL`・0011）を足して問いの定義そのもので数える形に直した。`guess_view` は否定形（未確認／unverified）を先に判定する。
+
+| # | ビュー | 3 回同値 | 行数 |
+|---|---|---|---|
+| Q11 references のファイル数 | `v_by_bundle` | ○ | 3 |
+| Q12 verified 済みの件数 | **`v_verified`**（v6 は `v_unverified` の補集合） | ○ | 3 |
+| Q13 期限切れの件数 | `v_stale` | ○ | 1 |
+| Q14 type 別の件数 | `v_by_type` | ○ | 14 |
+
+同じ単位で、fact の `recorded_at` を「generated.at が無ければ valid_from」に直した（実データ: memory で 6 件が該当。references／dev は 0）。summary の `source_hash` は保存だけだったので、回答時に再計算して違えば「要約が古い」と WARN する形にした（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。実データは 3 bundle とも 0 件）。
+
 ### ④ 全体（Q19〜Q20）— 自動採点なし
 - 回答は [overview-answers.md](overview-answers.md)（bundle 3 つの件数要約＋質問に近い上位 5 文書の description・見出し）。**K が 1〜5 で採点する欄**を用意した。
 - 抽出型（LLM なし）なので「傾向」「手厚い／薄い」の判断は入っていない。件数と一覧を並べるところまで。LLM 要約との比較は次単位。
@@ -188,6 +201,6 @@ status: draft
 | 型 | 問数 | 結果 |
 |---|---|---|
 | ① 探し物 | 10 | recall@5 0.90 / MRR 0.811（embed_ctx 単体・v5） |
-| ② 数える | 4 | 4/4 stable |
+| ② 数える | 4 | 4/4 stable（v7・Q12 は `v_verified`） |
 | ③ 時点 | 4 | 4/4（断片→文書→全体の 2 段。受入検証 D1〜D5 の回収後も 4/4・2 回一致＝v7） |
 | ④ 全体 | 2 | K 採点待ち |

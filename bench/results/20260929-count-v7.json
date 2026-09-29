@@ -1,0 +1,139 @@
+{
+  "all_stable": true,
+  "date": "2026-09-29",
+  "git_sha": "e3505cb-dirty",
+  "kind": "count",
+  "per_question": [
+    {
+      "id": "Q11",
+      "rows": [
+        {
+          "bundle": "dev",
+          "chunks": 857,
+          "docs": 53
+        },
+        {
+          "bundle": "memory",
+          "chunks": 153,
+          "docs": 76
+        },
+        {
+          "bundle": "references",
+          "chunks": 220,
+          "docs": 16
+        }
+      ],
+      "stable": true,
+      "view": "v_by_bundle"
+    },
+    {
+      "id": "Q12",
+      "rows": [
+        {
+          "bundle": "dev",
+          "n": 7
+        },
+        {
+          "bundle": "memory",
+          "n": 19
+        },
+        {
+          "bundle": "references",
+          "n": 1
+        }
+      ],
+      "stable": true,
+      "view": "v_verified"
+    },
+    {
+      "id": "Q13",
+      "rows": [
+        {
+          "bundle": "memory",
+          "n": 1
+        }
+      ],
+      "stable": true,
+      "view": "v_stale"
+    },
+    {
+      "id": "Q14",
+      "rows": [
+        {
+          "bundle": "dev",
+          "n": 6,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "dev",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "dev",
+          "n": 46,
+          "type": "Tech Note"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "memory",
+          "n": 3,
+          "type": "Decision"
+        },
+        {
+          "bundle": "memory",
+          "n": 16,
+          "type": "feedback"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "memory",
+          "n": 49,
+          "type": "project"
+        },
+        {
+          "bundle": "memory",
+          "n": 3,
+          "type": "reference"
+        },
+        {
+          "bundle": "memory",
+          "n": 2,
+          "type": "user"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": null
+        },
+        {
+          "bundle": "references",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "references",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "references",
+          "n": 14,
+          "type": "Life Data"
+        }
+      ],
+      "stable": true,
+      "view": "v_by_type"
+    }
+  ],
+  "question_count": 4,
+  "repeats": 3
+}

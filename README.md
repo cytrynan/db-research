@@ -30,6 +30,7 @@ uv run pytest                   # ユニット / uv run pytest -m db で統合�
 ```
 
 - 個人データの DB は **ループバック接続のみ**（`example.com` 等は exit 3）。`private.md` は走査除外＋DB トリガーで二重拒否
+- 品質ゲートは `bash scripts/gate.sh`（K は `pwsh -File scripts/gate.ps1`）: ruff format/check → mypy → pytest（db 含む・カバレッジ 80%）を pipefail で連鎖。手で `&&` を並べない
 - 決定は [docs/decisions.md](docs/decisions.md)、進捗は `.steering/20260929-foundation-ingest/tasklist.md`
 
 ---

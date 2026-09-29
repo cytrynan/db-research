@@ -40,6 +40,23 @@ def test_facts_counts_and_idempotent(clean_db: str) -> None:
     assert _count(clean_db, "explicit") == 1 and _count(clean_db, "inferred") == 1
 
 
+def test_recorded_at_fallback_and_v_verified(clean_db: str) -> None:
+    from dbr.features.count import ask_view
+
+    run(FIXTURES / "dated", "references", clean_db, log=lambda _m: None)
+    r = run_facts("references", clean_db)
+    assert r.recorded_from_valid == 2  # same-day.md（generated 無し）の 2 行
+    conn = connect(clean_db)
+    with conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT f.valid_from, f.recorded_at FROM fact f "
+            "JOIN document d ON d.id = f.document_id WHERE d.rel_path = 'same-day.md'"
+        )
+        rows = cur.fetchall()
+    assert len(rows) == 2 and all(r_["recorded_at"] == r_["valid_from"] for r_ in rows)
+    assert ask_view("v_verified", clean_db) == [{"bundle": "references", "n": 1}]
+
+
 def test_as_of_filters_by_time_and_history_is_ascending(clean_db: str) -> None:
     run(FIXTURES / "dated", "references", clean_db, log=lambda _m: None)
     run_facts("references", clean_db)

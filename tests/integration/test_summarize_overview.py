@@ -1,8 +1,13 @@
-import pytest
+import shutil
+from pathlib import Path
 
+import pytest
+from typer.testing import CliRunner
+
+from dbr.cli import app
 from dbr.features.ingest import run
 from dbr.features.ingest.embed import run_embed
-from dbr.features.ingest.summarize import run_summarize
+from dbr.features.ingest.summarize import run_summarize, stale_summaries
 from dbr.features.overview import answer, pick_bundles
 from dbr.shared.db import connect
 from dbr.shared.embed import get_embedder
@@ -37,6 +42,49 @@ def test_summarize_three_levels_and_idempotent(clean_db: str) -> None:
             and "文書 4" in str(row["text"])
             and "updated.md" in str(row["text"])
         )
+
+
+def test_stale_summaries_detects_changed_source_and_cli_check(
+    clean_db: str, tmp_path: Path
+) -> None:
+    src = tmp_path / "dated"
+    shutil.copytree(FIXTURES / "dated", src)
+    run(src, "references", clean_db, log=lambda _m: None)
+    run_summarize("references", clean_db)
+    assert stale_summaries(clean_db, ["references"]) == []
+    runner = CliRunner()
+    r = runner.invoke(
+        app, ["summarize", "--bundle", "references", "--check", "--dsn", clean_db]
+    )
+    assert r.exit_code == 0, r.output
+
+    # description を変えて再取り込み（summarize はしない）→ その文書と bundle が古い
+    note = src / "decisions-note.md"
+    note.write_text(
+        note.read_text(encoding="utf-8").replace("時点テスト用のダミー", "書き換えた"),
+        encoding="utf-8",
+    )
+    run(src, "references", clean_db, log=lambda _m: None)
+    stale = stale_summaries(clean_db, ["references"])
+    assert {(s.level, s.reason) for s in stale} == {
+        ("document", "changed"),
+        ("bundle", "changed"),
+    }
+    assert all(s.bundle == "references" for s in stale)
+    a = answer("references の扶養は全体としてどう？", dsn=clean_db, embedder=None)
+    assert any("要約が古い: 2 件" in w for w in a.warnings)
+    r = runner.invoke(
+        app, ["summarize", "--bundle", "references", "--check", "--dsn", clean_db]
+    )
+    assert r.exit_code == 6, r.output
+    assert "document" in r.output and "書き換えた" not in r.output  # 本文は出さない
+
+    run_summarize("references", clean_db)  # 作り直せば解消
+    assert stale_summaries(clean_db, ["references"]) == []
+    r = runner.invoke(
+        app, ["summarize", "--bundle", "references", "--check", "--dsn", clean_db]
+    )
+    assert r.exit_code == 0, r.output
 
 
 def test_overview_answer_with_embeddings_and_fallback(clean_db: str) -> None:

@@ -20,4 +20,5 @@ def test_migrate_second_run_is_noop(dsn: str) -> None:
         )
         cur.execute("SELECT count(*) AS n FROM pg_views WHERE viewname LIKE 'v\\_%'")
         row = cur.fetchone()
-        assert row is not None and int(str(row["n"])) == 4
+        # 0004 の 4 本 + 0011 v_verified
+        assert row is not None and int(str(row["n"])) == 5

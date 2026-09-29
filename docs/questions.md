@@ -34,7 +34,7 @@ status: draft
 | Q09 | 卒業までに取る資格の計画 | find | `references/career-roadmap.md` | 直撃だが「資格」は work にも出る＝順位を見る |
 | Q10 | 扶養で気にする年収ラインの、K の判定はどこ | find | `references/fuyou.md`（制度は tax/nenshu-kabe-seido.md で**別**＝正解に含めない） | 制度と本人判定の分離を検索が区別できるか。bench は `` ` `` で囲んだパスだけを正解として読む |
 | Q11 | references のファイルは全部で何件？ | count | `v_by_bundle`（bundle='references'） | ビュー |
-| Q12 | K が確認済み（verified）の記録は references に何件ある？ | count | `v_unverified` の補集合（bundle='references'） | ビュー |
+| Q12 | K が確認済み（verified）の記録は references に何件ある？ | count | `v_verified`（bundle='references'。**2026-09-29 に `v_unverified` の補集合から変更**＝問いの定義そのものをビューに固定） | ビュー |
 | Q13 | 期限切れ（stale_after 超過）の記録はいくつ？ | count | `v_stale` | ビュー。bench 実行日に依存＝JSON に実行日を記録 |
 | Q14 | type が Life Data のファイルは何件？ | count | `v_by_type` | ビュー |
 | Q15 | 扶養の制度知識を references から別ファイルに分けたのはいつ？ | asof | `references/INDEX.md` `references/fuyou.md` `2026-08-11`（INDEX 横断トピックと fuyou.md 冒頭の両方に「2026-08-11 分離」がある） | 有効期間の切り替わり。bench は上位3件に「ファイル一致∧日付一致」があれば正解。**2026-09-29 に fuyou.md を正解ファイルに追加**（断片スコープの bench で fuyou.md の 2026-08-11 が返り、同じ事象の記録だったため） |

@@ -5,6 +5,9 @@
 - dated_text : 見出し・本文の行にある `YYYY-MM-DD ＋ 動詞`（K申告／K決定／分離 …）
 - inferred   : どちらも無い文書は `generated_at` を暫定の valid_from にする
                （回答では「暫定」と明示）
+recorded_at（記録時間）は文書の `generated.at`。無い文書は**その事実の valid_from**
+で代用し、件数を FactsReport.recorded_from_valid に出す（ingested_at は使わない＝
+取り込み日は記録日ではない。2026-09-29 受入検証の未回収分を回収）。
 bundle 単位で全削除→再挿入するので、同じ入力なら同じ行になる（決定的）。
 """
 
@@ -54,6 +57,9 @@ class FactsReport:
     dated_text: int = 0
     inferred: int = 0
     skipped_no_date: int = 0  # generated_at も無く暫定すら置けない文書
+    recorded_from_valid: int = (
+        0  # generated_at が無く recorded_at を valid_from で代用した事実
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -83,7 +89,7 @@ def extract_dated(
     chunk_id: int,
     heading_path: str,
     body: str,
-    recorded_at: datetime,
+    recorded_at: datetime | None,
 ) -> list[FactRow]:
     """見出し行＋本文の各行から日付つきの事実を抽出（同じ行・同じ日付は 1 件）.
 
@@ -110,7 +116,7 @@ def extract_dated(
                 value=value,
                 valid_from=when,
                 valid_to=None,
-                recorded_at=recorded_at,
+                recorded_at=recorded_at if recorded_at is not None else when,
                 valid_source="dated_text",
             )
     return list(seen.values())
@@ -132,7 +138,7 @@ def _exclusive_end(raw: object) -> datetime | None:
 
 
 def extract_explicit(
-    *, document_id: int, fm: dict[str, Any], title: str, recorded_at: datetime
+    *, document_id: int, fm: dict[str, Any], title: str, recorded_at: datetime | None
 ) -> FactRow | None:
     valid = fm.get("valid")
     if not isinstance(valid, dict):
@@ -151,7 +157,7 @@ def extract_explicit(
         value=str(desc) if desc else title,
         valid_from=start,
         valid_to=end,
-        recorded_at=recorded_at,
+        recorded_at=recorded_at if recorded_at is not None else start,
         valid_source="explicit",
     )
 
@@ -161,7 +167,7 @@ def run_facts(bundle: str, dsn: str) -> FactsReport:
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
         cur.execute(
-            "SELECT id, rel_path, fm, generated_at, ingested_at FROM document "
+            "SELECT id, rel_path, fm, generated_at FROM document "
             "WHERE bundle = %(b)s ORDER BY id",
             {"b": bundle},
         )
@@ -176,8 +182,7 @@ def run_facts(bundle: str, dsn: str) -> FactsReport:
             doc_id = int(str(d["id"]))
             fm = d["fm"] if isinstance(d["fm"], dict) else {}
             gen = d["generated_at"]
-            recorded = gen if isinstance(gen, datetime) else d["ingested_at"]
-            assert isinstance(recorded, datetime)
+            recorded = gen if isinstance(gen, datetime) else None
             cur.execute(
                 "SELECT id, heading_path, body FROM chunk "
                 "WHERE document_id = %(d)s ORDER BY ordinal",
@@ -194,6 +199,8 @@ def run_facts(bundle: str, dsn: str) -> FactsReport:
             if ex:
                 doc_rows.append(ex)
                 report.explicit += 1
+                if recorded is None:
+                    report.recorded_from_valid += 1
             for c in chunks:
                 found = extract_dated(
                     document_id=doc_id,
@@ -204,6 +211,8 @@ def run_facts(bundle: str, dsn: str) -> FactsReport:
                 )
                 doc_rows.extend(found)
                 report.dated_text += len(found)
+                if recorded is None:
+                    report.recorded_from_valid += len(found)
             if not doc_rows:
                 if isinstance(gen, datetime):
                     desc = fm.get("description")

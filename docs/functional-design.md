@@ -129,12 +129,12 @@ class Fact:
     value: str             # 事実の内容
     valid_from: datetime
     valid_to: datetime | None      # None = 現在も有効
-    recorded_at: datetime          # 記録時間（generated.at 由来）
-    valid_source: str      # 'explicit'（fm.valid あり）| 'inferred'（generated.at を暫定使用）
+    recorded_at: datetime          # 記録時間＝generated.at。無ければその事実の valid_from（2026-09-29 確定。ingested_at は使わない）
+    valid_source: str      # 'explicit'（fm.valid）| 'dated_text'（本文の日付＋動詞）| 'inferred'（generated.at を暫定使用）
 ```
 
 **制約**:
-- 同じ `subject` で `valid_to IS NULL` の行は**高々1つ**（部分一意インデックス）
+- 識別子は `(document_id, COALESCE(chunk_id,0), subject, valid_from, md5(value))`（0008→0010）。設計時案の部分一意 `(subject) WHERE valid_to IS NULL` は valid_to を自動で閉じない方針のため未採用
 - 更新は「旧行の `valid_to` を閉じて新行を挿入」。削除しない
 - `valid_source = 'inferred'` の行は、③の回答で「暫定」と明示する
 
@@ -303,6 +303,7 @@ class Searcher:
 | ビュー | 定義 |
 |---|---|
 | `v_unverified` | `verified_at IS NULL AND status <> 'deprecated'` の件数（bundle 別） |
+| `v_verified` | `verified_at IS NOT NULL` の件数（bundle 別。0011・2026-09-29 追加＝Q12「確認済みは何件」を補集合でなく定義そのもので答える） |
 | `v_by_type` | `type` 別件数 |
 | `v_stale` | `stale_after < current_date` の件数 |
 | `v_by_bundle` | bundle 別件数・チャンク数・平均トークン |
@@ -332,7 +333,7 @@ class Temporal:
 
 ### Overview（F6・④ 全体）
 
-**責務**: 要約階層の生成と参照（P1）
+**責務**: 要約階層の生成と参照（P1）。要約は元テキストの `source_hash` を持ち、回答時に同じ関数で再計算して違えば「要約が古い」と WARN する（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。section レベルは対象外）
 
 **インターフェース**:
 ```python

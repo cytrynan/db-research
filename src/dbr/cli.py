@@ -552,7 +552,8 @@ def facts(
         d = report.to_dict()
         typer.echo(
             f"explicit {d['explicit']} / dated_text {d['dated_text']} / "
-            f"inferred {d['inferred']} / 日付なしで置けず {d['skipped_no_date']}"
+            f"inferred {d['inferred']} / 日付なしで置けず {d['skipped_no_date']} / "
+            f"recorded_at を valid_from で代用 {d['recorded_from_valid']}"
             f"（{bundle}）"
         )
 
@@ -560,16 +561,36 @@ def facts(
 @app.command()
 def summarize(
     bundle: Annotated[str, typer.Option("--bundle")],
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check", help="書き換えず、陳腐化した要約を一覧（あれば exit 6）"
+        ),
+    ] = False,
     dsn: DsnOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
     """④ 全体: 抽出型の要約階層（bundle → document → section）を作り直す（冪等）."""
+    from dataclasses import asdict
+
     from dbr.features.ingest import BUNDLES
-    from dbr.features.ingest.summarize import run_summarize
+    from dbr.features.ingest.summarize import run_summarize, stale_summaries
 
     if bundle not in BUNDLES:
         typer.echo(f"--bundle は {sorted(BUNDLES)} のいずれか", err=True)
         raise typer.Exit(code=2)
+    if check:
+        try:
+            stale = stale_summaries(resolve_dsn(dsn), [bundle])
+        except LoopbackViolation as exc:
+            raise _exit_on_loopback(exc) from None
+        if as_json:
+            typer.echo(json.dumps([asdict(s) for s in stale], ensure_ascii=False))
+        else:
+            for s in stale:  # level と target_key だけ（本文は出さない）
+                typer.echo(f"{s.level} {s.target_key} {s.reason}")
+            typer.echo(f"陳腐化 {len(stale)} 件（{bundle}）")
+        raise typer.Exit(code=6 if stale else 0)
     try:
         report = run_summarize(bundle, resolve_dsn(dsn))
     except LoopbackViolation as exc:

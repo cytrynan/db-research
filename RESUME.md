@@ -21,7 +21,7 @@
 ## 再開の手順
 ```bash
 docker compose up -d --wait && uv run dbr migrate          # 再実行は 0 件
-uv run pytest -q && uv run pytest -q -m db tests/integration  # 統合は dbr_test
+bash scripts/gate.sh                                        # ruff → mypy → pytest（db 含む・80%）。K は pwsh -File scripts/gate.ps1
 uv run dbr count v_by_bundle                                 # 実データが残っているか
 ```
 埋め込みを作り直す必要は無い（`dbr embed` は未生成分だけ計算）。`private.md` は絶対に取り込まない（走査除外＋トリガー）。
@@ -29,5 +29,5 @@ uv run dbr count v_by_bundle                                 # 実データが�
 ## 守ること（決定台帳 `docs/decisions.md` の要点）
 - 個人データは手元の PostgreSQL のみ・外部ホスティング禁止（D-5）。埋め込み・並べ直しもローカルモデルのみ（D-13）
 - 正本は OKF Markdown。DB は捨てて作り直せる派生（D-9）。マイグレーションの既存ファイルは編集しない（D-3）
-- ゲート（ruff / mypy / pytest / coverage 80%）を通してから commit。連鎖は `set -o pipefail` を先頭に
+- ゲートは `bash scripts/gate.sh`（pipefail 込み・4 段）を通してから commit。手で `&&` を並べない（並べて事故 3 回）
 - commit / push・受入検証（別コンテキスト。Codex 不可なら readonly-reviewer/Opus）・振り返りを毎単位で

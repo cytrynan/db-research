@@ -8,6 +8,9 @@
 
 ## 2026-09-29
 
+* **Update**: [検索品質の測定結果](bench-results.md) — ② v7 節（Q12 を `v_verified` で再測定・4/4 stable）、recorded_at 規則と source_hash 陳腐化 WARN の実データ確認を追記 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — Fact の recorded_at 規則（generated.at、無ければ valid_from）と valid_source に dated_text、識別子を実装どおり（md5(value)・0010）に、Counter に `v_verified`（0011）、Overview に source_hash の陳腐化 WARN と `--check` を追記 (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q12 の期待を `v_unverified` の補集合から `v_verified` へ（問いの定義そのものをビューに固定） (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v7 節（受入検証 D1〜D5 の回収後に asof を再測定 4/4・2 回一致・dated_text 293→295）と、v6「発見 2（INDEX と work.md の日付不整合）」の**取り下げ**（timestamptz の UTC 表示を日付と誤読） (kuroko/claude-fable-5-1)
 * **Update**: [質問セット（20問）](questions.md) — Q16 の正解日付から `2026-08-10` を**撤回**（work.md に記載なし・受入検証で反証。誤読の経緯を備考に明記）、「より前／以前」の解釈を備考に追記 (kuroko/claude-fable-5-1)
 * **Update**: [技術仕様書](architecture.md) — ③ の索引を実装どおり（`fact_uniq` に md5(value)・0010）に訂正 (kuroko/claude-fable-5-1)

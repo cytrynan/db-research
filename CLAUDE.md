@@ -21,6 +21,7 @@ uv run ruff check .   # Lint
 uv run ruff format .  # Format
 uv run mypy src       # 型チェック
 uv run pytest         # テスト実行 (カバレッジ込み)
+bash scripts/gate.sh  # 品質ゲート一式（format/check → mypy → pytest db 込み・80%）。K は pwsh -File scripts/gate.ps1
 ```
 
 <!-- /init-stack 実行でこのセクションが具体的な技術スタック情報に書き換えられます -->

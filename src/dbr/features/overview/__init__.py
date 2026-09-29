@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from dbr.features.ingest.handler import BUNDLES
+from dbr.features.ingest.summarize import stale_summaries
 from dbr.features.search import Hit, Mode, NoEmbeddings, dedupe_by_document, search
 from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
@@ -86,6 +87,14 @@ def answer(
             out.evidence_ids.append(int(str(r["id"])))
         if not out.bundle_summaries:
             out.warnings.append("bundle 要約が無い（dbr summarize を実行する）")
+
+    # 要約は元テキストの source_hash を持つ。変わっていたら黙って古い要約を出さず WARN
+    stale = stale_summaries(dsn, bundles)
+    if stale:
+        targets = ", ".join(sorted({s.bundle for s in stale}))
+        out.warnings.append(
+            f"要約が古い: {len(stale)} 件（dbr summarize --bundle {targets}）"
+        )
 
     mode: Mode = "embed_ctx" if embedder is not None else "fts"
     hits: list[Hit] = []

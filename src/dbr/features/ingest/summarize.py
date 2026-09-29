@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -40,6 +41,115 @@ class SummarizeReport:
 
 def _h(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+# --- source_hash の材料。run_summarize と stale_summaries の両方がこれを使う
+# （別実装にしない＝片方だけ変えると陳腐化検知が壊れる）
+def top_headings(chunks: Sequence[Mapping[str, Any]]) -> list[str]:
+    """断片の heading_path の上 2 段を出現順・重複なしで返す（要約とハッシュの材料）."""
+    out: list[str] = []
+    for c in chunks:
+        top2 = " > ".join(str(c["heading_path"]).split(" > ")[:2])
+        if top2 and top2 not in out:
+            out.append(top2)
+    return out
+
+
+def doc_source_hash(fm: dict[str, Any], headings: Sequence[str]) -> str:
+    return _h(
+        json.dumps(fm, ensure_ascii=False, sort_keys=True, default=str)
+        + "\n".join(headings)
+    )
+
+
+def bundle_line(rel_path: str, desc: str) -> str:
+    return f"- {rel_path}: {desc or '(description なし)'}"
+
+
+def bundle_source_hash(bundle_lines: Sequence[str]) -> str:
+    return _h("\n".join(bundle_lines))
+
+
+@dataclass(frozen=True)
+class StaleSummary:
+    bundle: str
+    level: str  # 'bundle' | 'document'
+    target_key: str
+    reason: str  # 'changed'（元テキストが変わった）| 'missing'（要約が無い）
+
+
+def _compare(
+    out: list[StaleSummary],
+    stored: Mapping[tuple[str, str], str],
+    bundle: str,
+    level: str,
+    key: str,
+    expected: str,
+) -> None:
+    got = stored.get((level, key))
+    if got is None:
+        out.append(StaleSummary(bundle, level, key, "missing"))
+    elif got != expected:
+        out.append(StaleSummary(bundle, level, key, "changed"))
+
+
+def stale_summaries(
+    dsn: str,
+    bundles: Sequence[str],
+    levels: Sequence[str] = ("bundle", "document"),
+) -> list[StaleSummary]:
+    """source_hash を要約時と同じ関数で再計算し、違う／無い要約を返す.
+
+    本文は返さない（level と target_key だけ）。
+
+    section レベルは対象外（overview が使わない・断片数ぶんの再計算になる）。
+    受入検証（2026-09-29）で「source_hash は保存しているだけ」と指摘された分の回収。
+    """
+    out: list[StaleSummary] = []
+    conn = connect(dsn)
+    with conn, conn.cursor() as cur:
+        for bundle in bundles:
+            cur.execute(
+                "SELECT id, rel_path, fm FROM document "
+                "WHERE bundle = %(b)s ORDER BY rel_path",
+                {"b": bundle},
+            )
+            docs = cur.fetchall()
+            cur.execute(
+                "SELECT level, target_key, source_hash FROM summary "
+                "WHERE (level = 'bundle' AND target_key = %(b)s) "
+                "OR (level = 'document' AND target_key = ANY(%(ids)s::text[]))",
+                {"b": bundle, "ids": [str(d["id"]) for d in docs]},
+            )
+            stored = {
+                (str(r["level"]), str(r["target_key"])): str(r["source_hash"])
+                for r in cur.fetchall()
+            }
+            bundle_lines: list[str] = []
+            for d in docs:
+                doc_id = str(d["id"])
+                fm = d["fm"] if isinstance(d["fm"], dict) else {}
+                bundle_lines.append(
+                    bundle_line(str(d["rel_path"]), str(fm.get("description") or ""))
+                )
+                if "document" in levels:
+                    cur.execute(
+                        "SELECT heading_path FROM chunk "
+                        "WHERE document_id = %(d)s ORDER BY ordinal",
+                        {"d": int(doc_id)},
+                    )
+                    expected = doc_source_hash(fm, top_headings(cur.fetchall()))
+                    _compare(out, stored, bundle, "document", doc_id, expected)
+            if "bundle" in levels:
+                _compare(
+                    out,
+                    stored,
+                    bundle,
+                    "bundle",
+                    bundle,
+                    bundle_source_hash(bundle_lines),
+                )
+    return out
 
 
 def first_paragraph(body: str, limit: int = 200) -> str:
@@ -105,12 +215,9 @@ def run_summarize(bundle: str, dsn: str) -> SummarizeReport:
                 {"d": doc_id},
             )
             chunks = cur.fetchall()
-            headings: list[str] = []
+            headings = top_headings(chunks)
             for c in chunks:
                 hp = str(c["heading_path"])
-                top2 = " > ".join(hp.split(" > ")[:2])
-                if top2 and top2 not in headings:
-                    headings.append(top2)
                 sec = first_paragraph(str(c["body"])) or hp or "(空)"
                 rows.append(
                     ("section", str(c["id"]), sec, _h(str(c["body"])), _tokens(sec))
@@ -130,15 +237,12 @@ def run_summarize(bundle: str, dsn: str) -> SummarizeReport:
                     "document",
                     str(doc_id),
                     doc_text,
-                    _h(
-                        json.dumps(fm, ensure_ascii=False, sort_keys=True, default=str)
-                        + "\n".join(headings)
-                    ),
+                    doc_source_hash(fm, headings),
                     _tokens(doc_text),
                 )
             )
             report.documents += 1
-            bundle_lines.append(f"- {d['rel_path']}: {desc or '(description なし)'}")
+            bundle_lines.append(bundle_line(str(d["rel_path"]), desc))
             if d["verified_at"] is None and d["status"] != "deprecated":
                 unverified += 1
             if d["stale_after"] is not None and str(d["stale_after"]) < _today():
@@ -155,7 +259,7 @@ def run_summarize(bundle: str, dsn: str) -> SummarizeReport:
                 "bundle",
                 bundle,
                 bundle_text,
-                _h("\n".join(bundle_lines)),
+                bundle_source_hash(bundle_lines),
                 _tokens(bundle_text),
             )
         )

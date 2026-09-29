@@ -81,6 +81,26 @@ def test_extract_dated_keeps_distinct_lines_with_same_heading_and_date() -> None
     assert {r.value for r in rows} == {"- 2026-08-11 決定", "- 2026-08-11 承認"}
 
 
+def test_recorded_at_falls_back_to_valid_from_when_no_generated() -> None:
+    rows = extract_dated(
+        document_id=1,
+        chunk_id=1,
+        heading_path="H",
+        body="- 2026-08-11 決定",
+        recorded_at=None,  # generated.at の無い文書
+    )
+    assert (
+        rows[0].recorded_at == rows[0].valid_from == datetime(2026, 8, 11, tzinfo=JST)
+    )
+    ex = extract_explicit(
+        document_id=1,
+        fm={"valid": {"from": "2026-04-01"}},
+        title="a.md",
+        recorded_at=None,
+    )
+    assert ex is not None and ex.recorded_at == ex.valid_from
+
+
 def test_normalize_subject_strips_date_and_verb() -> None:
     s = normalize_subject(
         "A > 収益目標（2026-07-26 K決定）", "- 候補は3つ（2026-08-11 K申告）"
