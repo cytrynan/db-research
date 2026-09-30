@@ -226,13 +226,15 @@ def unsupported_mentions(text: str, evidence: str) -> list[str]:
     ev_files = {v for k, v in _mentions(evidence) if k == "file"}
     ev_bases = {e.rsplit("/", 1)[-1] for e in ev_files}
     ev_nums = {v for k, v in _mentions(evidence) if k == "num"}
+
+    def known(kind: str, val: str) -> bool:
+        if kind != "file":
+            return val in ev_nums
+        return val in ev_files if "/" in val else val in ev_bases
+
     out: list[str] = []
     for kind, val in _mentions(text):
-        if kind == "file":
-            ok = val in ev_files if "/" in val else val in ev_bases
-        else:
-            ok = val in ev_nums
-        if not ok and val not in out:
+        if not known(kind, val) and val not in out:
             out.append(val)
     return out
 
