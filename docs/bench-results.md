@@ -266,5 +266,13 @@ status: draft
 3. **判断の質は低い**。Q20 v2 は「手厚い: dev, memory／薄い: references, recording.md, fuyou.md, health.md」と、bundle の件数行と文書を混同して**逆向き**に並べた（健康の記録は references/health.md が本体）。v1 は「筋トレ記録と専用アプリが手厚く、他は薄い」で、証拠 1 位の workout.md だけを見ている。
 4. **証拠の選び方が先に直すべき箇所**: Q19 の上位 5 文書は token-efficiency.md・log.md・profile.md・recording.md・anthropic-official-guidance.md で、「生活の効率化」に対して dev/ の技術文書が 3 本入る（「効率」の語で寄る）。Q20 は 50 断片では workout.md・profile.md・recording.md・fuyou.md・health.md（health.md が 5 位）、**① と同じ 500 断片・rrf_top3 に揃えた v9c では health.md が落ちて home.md が入った**（複数断片を持つ文書が上がる集約の副作用。v9c の Q20 回答は bundle の件数行を「手厚い」に並べる 658 字になった）。**④ の弱点は LLM でなく、全 bundle 横断の上位 5 文書という証拠の切り方**。LLM は渡された証拠に忠実だった（0 根拠外）ぶん、証拠の偏りをそのまま答えにする。
 
+### K 採点（2026-09-30・v9c の回答に対して）
+| 問 | 抽出型 | LLM（Qwen2.5-1.5B・v2） |
+|---|---|---|
+| Q19 生活の効率化方針はどこに | **5** | 4 |
+| Q20 健康の記録は何が手厚く何が薄い | **5** | 3 |
+
+抽出型が 2 問とも満点。LLM は Q19 で 1 点・Q20（bundle と文書を混同した回答）で 2 点下回った。**④ は抽出型で足りる**というのが K の判定＝LLM 層は「配線は残すが保留」。証拠の切り方（Q20 で health.md が落ちる）は抽出型の回答にも影響するので、次の一手は変わらず証拠の bundle 絞り込み。
+
 ### 決定（D-15・`docs/decisions.md`）
 ローカル LLM の回答層を**配線・測定はしたが既定にはしない**（`--llm` 省略時は抽出型のみ）。K が `overview-answers.md` で抽出型と LLM（v2）を採点してから、次の一手＝**証拠の切り方**（質問の語で bundle を絞る・「生活／健康」→ references 優先）を先に直す。モデルの大型化（3B・速度 2 倍遅）はその後。

@@ -8,6 +8,7 @@
 
 ## 2026-09-30
 
+* **Update**: [overview の回答](overview-answers.md)・[検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md) — K 採点（抽出型 5/5・LLM 4/3）を記入し、④ は抽出型で足りる・LLM 層は保留と結論。overview-answers に verified: human:K (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md)・[overview の回答](overview-answers.md) — 受入検証の回収: v9c（検出器改訂・証拠を ① と同じ 500 断片で選ぶ）の行と Q20 の証拠の変化、v1 プロンプト原文、秒の訂正（37〜198） (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v9 節（④ ローカル LLM の回答層: プロンプト v1/v2 の秒・文字数・根拠外 0・2 回一致、判断の質と証拠の偏りの観察、D-15） (kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-15: ④ の回答層にローカル LLM を配線・既定は抽出型のまま・証拠の切り方を先に直す (kuroko/claude-fable-5-1)
