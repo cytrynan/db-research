@@ -8,6 +8,9 @@
 
 ## 2026-09-30
 
+* **Update**: [検索品質の測定結果](bench-results.md) — v9 節（④ ローカル LLM の回答層: プロンプト v1/v2 の秒・文字数・根拠外 0・2 回一致、判断の質と証拠の偏りの観察、D-15） (kuroko/claude-fable-5-1)
+* **Update**: [決定台帳](decisions.md) — D-15: ④ の回答層にローカル LLM を配線・既定は抽出型のまま・証拠の切り方を先に直す (kuroko/claude-fable-5-1)
+* **Update**: [overview の回答（K 採点用）](overview-answers.md) — 抽出型／LLM（Qwen2.5-1.5B・プロンプト v2）の 2 列・根拠外の言及列・K 採点欄 2 列に更新（process:dbr-bench が生成） (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — Overview(F6) に回答層（ローカル LLM・同じ証拠のみ・根拠外の言及検出・2 回一致）と上位文書の集約 rrf_top3 を追記 (kuroko/claude-fable-5-1)
 
 ## 2026-09-29

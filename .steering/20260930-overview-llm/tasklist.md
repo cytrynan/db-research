@@ -15,14 +15,55 @@ tracking: #39
 
 ## フェーズ2: bench・CLI と実測
 
-- [~] `bench --kind overview --llm`（answers に LLM 列・JSON に reproducible / seconds / unsupported）・`ask --llm`・統合テスト（fake）・実データで Q19・Q20 を 2 回生成 → `overview-answers.md` (#41)
+- [x] `bench --kind overview --llm`（answers に LLM 列・JSON に reproducible / seconds / unsupported）・`ask --llm`・統合テスト（fake）・実データで Q19・Q20 を 2 回生成 → `overview-answers.md` (#41)
 
 ## フェーズ3: 記録
 
-- [ ] `docs/bench-results.md` v9 節・`docs/decisions.md` D-15・functional-design F6・RESUME.md・振り返り・受入検証（Codex 優先）・issue クローズ (#42)
+- [~] `docs/bench-results.md` v9 節・`docs/decisions.md` D-15・functional-design F6・RESUME.md・振り返り・受入検証（Codex 優先）・issue クローズ (#42)
 
 ---
 
 ## 実装後の振り返り
 
-（完了後に記入）
+### 実装完了日
+2026-09-30
+
+### 計画と実績の差分
+**計画と異なった点**:
+- プロンプトを 1 回改訂した（v1「5 文以内」→ v2「観点ごとにファイル名を 1 つ以上・3〜5 文」）。v1 は 27〜89 字の薄い答えで K が採点しにくいと判断し、v1 の控えを `bench/results/…-v9-prompt1.md` に残して v2 を採点用にした。計画は 1 版だけだった
+- overview の上位文書の選び方を `dedupe_by_document`（max）から D-14 と同じ `rrf_top3` に揃えた（計画外・1 行）
+- 実データの生成はモデル読み込み（初回 260 秒・重み 3GB の取得込み）と 1 回答 40〜90 秒で、前景 600 秒に収まらずバックグラウンドで回した
+
+**新たに必要になったタスク**: なし（K 採点は K の作業）
+
+### 止まった点・失敗した点（**必須。1件以上**）
+- **何が起きたか**: ruff E501（全角幅）を 10 か所、RUF022（`__all__` の並び）を 1 か所踏み、ゲートを 4 回回した
+- **原因**: 日本語の docstring・コメント・Markdown 見出し文字列を 1 行に書く癖。全角は幅 2 で 44 字が上限
+- **次にどうするか**: 日本語の 1 行は 40 字で折る、`__all__` は `ruff --fix` に任せる。**本日までの 4 単位で E501 は計 18 回**＝癖として定着している。`line-length` を日本語向けに 100 へ上げる案は K の判断
+- **何が起きたか（3 件目・規範違反）**: プロンプト v2 のコメント行が E501 で `gate.sh` が exit 1 だったのに、commit `664b277` が通って push された
+- **原因**: `bash scripts/gate.sh > log; echo …; grep … && git add && git commit` と、ゲートと commit の間に `echo`／`grep` を挟んだため `&&` の起点が grep になった。「ゲートの失敗が commit に届かない」事故は形を変えて通算 4 回目
+- **次にどうするか**: `scripts/gate-commit.sh <msg-file>`（`set -e` でゲート→add→commit を 1 本に）を追加し、以後の commit はこれだけを使う。修正 commit で E501 を回収した。手で `&&` を並べる経路を残さない
+- **何が起きたか（2 件目）**: mypy が transformers 5 の `from_pretrained` の型付けで落ちた（引数 1 に `PreTrainedModel` を要求）
+- **次にどうするか**: `Any` の別名経由で呼ぶ（型付けの都合を実装に持ち込まない）
+
+### 学んだこと
+**技術的な学び**:
+- 具体: 4 回答とも根拠外の言及 0・2 回一致だったが、Q20 v2 は「手厚い: dev, memory／薄い: references, health.md」と bundle の件数行と文書を混同して逆向きに並べた
+  - 抽象: **「根拠に忠実」と「判断が正しい」は別の軸**。忠実さは機械で測れる（根拠外の言及・再現性）が、判断の質は K 採点でしか測れない。1.5B は前者を満たし後者を満たさない
+- 具体: Q19 の証拠（上位 5 文書）は「効率」の語で dev/ の技術文書が 3 本入り、LLM はそれをそのまま「生活の効率化」の答えにした
+  - 抽象: **LLM は証拠の偏りを増幅しない代わりに、そのまま答えにする**。④ の弱点は LLM でなく証拠の切り方（全 bundle 横断の上位 5 文書）。次に直すのは検索側の bundle 絞り込み
+- 具体: プロンプト v1 → v2 で長さ 3 倍・所要 1.5 倍。根拠外は増えなかった
+  - 抽象: 小さいモデルは「何を書くか」を指示しないと最短の答えを返す。観点とファイル名の要求は忠実さを損なわずに情報量を上げた
+
+**プロセス上の改善点**:
+- 実モデルの測定と fake でのゲートを分け、ゲートは fake だけで通る形にした（CI で重みを取得しない）
+
+**リポジトリをまたいで使える知見**:
+- 「忠実さと判断の質は別の軸」「LLM は証拠の偏りをそのまま答えにする」「小さいモデルには観点とファイル名を要求する」を `dev/postgres-fts-pgvector.md` §8 へ
+
+### 受入検証（別コンテキスト）
+- （実施後に追記）
+
+### 次回への改善提案
+- ④ の証拠の切り方: 質問の語で bundle を絞る（「生活／健康／お金」→ references を優先）規則を測る
+- モデル比較（3B）はその後。K 採点の結果が「抽出型で十分」なら LLM 層は保留
