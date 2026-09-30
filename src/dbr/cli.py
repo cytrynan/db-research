@@ -197,6 +197,20 @@ RerankerOpt = Annotated[
     str, typer.Option("--reranker", help="cross-encoder のモデル名（fake で配線確認）")
 ]
 DEFAULT_RERANKER_NAME = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+LlmOpt = Annotated[
+    str,
+    typer.Option("--llm", help="overview: ローカル LLM 名 | fake | none（既定 none）"),
+]
+
+
+def _llm_or_exit(name: str) -> Any:
+    from dbr.shared.llm import LLMUnavailable, get_llm
+
+    try:
+        return get_llm(name)
+    except LLMUnavailable as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=5) from None
 
 
 ASK_KINDS = ("auto", "find", "count", "asof", "overview")
@@ -222,6 +236,7 @@ def ask(
     at: Annotated[
         str | None, typer.Option("--at", help="時点（YYYY-MM-DD / YYYY-MM）。asof 用")
     ] = None,
+    llm: LlmOpt = "none",
     dsn: DsnOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
@@ -382,12 +397,15 @@ def ask(
         return
     # overview
     from dbr.features.overview import answer as overview_answer
+    from dbr.features.overview import narrate
 
     emb_ov = _embedder_or_exit(model)
+    llm_obj = _llm_or_exit(llm) if llm != "none" else None
     try:
         ov = overview_answer(question, dsn=resolve_dsn(dsn), embedder=emb_ov)
     except LoopbackViolation as exc:
         raise _exit_on_loopback(exc) from None
+    nar = narrate(question, ov, llm_obj) if llm_obj is not None else None
     out.update(
         {
             "bundles": ov.bundles,
@@ -395,6 +413,16 @@ def ask(
             "doc_summaries": ov.doc_summaries,
             "evidence_ids": ov.evidence_ids,
             "warnings": ov.warnings,
+            "narrative": (
+                {
+                    "model": nar.model,
+                    "text": nar.text,
+                    "unsupported": nar.unsupported,
+                    "seconds": nar.seconds,
+                }
+                if nar
+                else None
+            ),
         }
     )
     if as_json:
@@ -410,6 +438,9 @@ def ask(
                 f"- [{d['doc']}]（summary#{d['id']}）\n  "
                 + d["text"].replace("\n", "\n  ")
             )
+    if nar is not None:
+        typer.echo(f"\n■ LLM の回答（{nar.model}・{nar.seconds} 秒）\n{nar.text}")
+        typer.echo("根拠外の言及: " + (", ".join(nar.unsupported) or "なし"))
     for w in ov.warnings:
         typer.echo(f"WARN: {w}", err=True)
 
@@ -449,6 +480,7 @@ def bench(
         int | None,
         typer.Option("--rerank-top", help="find: 並べ直す候補数（省略で既定）"),
     ] = None,
+    llm: LlmOpt = "none",
     dsn: DsnOpt = None,
 ) -> None:
     """質問セットを流して指標を出す.
@@ -522,6 +554,7 @@ def bench(
                 embedder=_embedder_or_exit(model),
                 answers_path=answers,
                 repo=REPO_ROOT,
+                llm=_llm_or_exit(llm) if llm != "none" else None,
             )
             text = overview_markdown(result)
         elif kind == "sweep":

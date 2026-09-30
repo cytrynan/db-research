@@ -339,6 +339,8 @@ class Temporal:
 
 **責務**: 要約階層の生成と参照（P1）。要約は元テキストの `source_hash` を持ち、回答時に同じ関数で再計算して違えば「要約が古い」と WARN する（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。section レベルは対象外）。検知の範囲: bundle のハッシュは各文書の rel_path＋description だけを覆い、種別・未確認・期限切れの件数の変化は document レベルの changed で捕まえる。「期限切れ（今日時点）」は日付の進行だけで古くなるのでハッシュでは検知しない（要約の作り直しは運用で）
 
+**回答層（2026-09-30 追加）**: 抽出型の回答（bundle 要約の先頭行＋上位文書の document 要約＝証拠）に加え、`--llm <ローカルモデル>` を指定すると**同じ証拠だけを渡してローカル LLM（transformers・CPU・貪欲デコード）が日本語 5 文以内の回答を書く**。回答中のファイル名・数値のうち証拠に無いものを `unsupported_mentions` で機械検出し（ハルシネーションの下界）、bench は 2 回生成して一致（reproducible）と所要秒を記録する。外部 API は使わない（D-13 と同じ境界）。上位文書の選び方は ① の既定と同じ集約 rrf_top3（D-14）
+
 **インターフェース**:
 ```python
 class Summarizer:

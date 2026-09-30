@@ -1,0 +1,73 @@
+{
+  "answers_file": "C:\\Users\\meer0\\dev\\db-research\\docs\\overview-answers.md",
+  "date": "2026-09-30",
+  "git_sha": "4bd6a2b-dirty",
+  "kind": "overview",
+  "llm_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "model": "intfloat/multilingual-e5-small",
+  "per_question": [
+    {
+      "bundles": [
+        "dev",
+        "memory",
+        "references"
+      ],
+      "evidence_ids": [
+        1148,
+        1378,
+        237,
+        1064,
+        134,
+        166,
+        948,
+        440
+      ],
+      "id": "Q19",
+      "llm": {
+        "chars": 261,
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "reproducible": true,
+        "seconds": [
+          88.9,
+          87.0
+        ],
+        "unsupported": []
+      },
+      "n_bundle_summaries": 3,
+      "n_doc_summaries": 5,
+      "warnings": []
+    },
+    {
+      "bundles": [
+        "dev",
+        "memory",
+        "references"
+      ],
+      "evidence_ids": [
+        1148,
+        1378,
+        237,
+        236,
+        166,
+        948,
+        82,
+        92
+      ],
+      "id": "Q20",
+      "llm": {
+        "chars": 147,
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "reproducible": true,
+        "seconds": [
+          59.3,
+          55.6
+        ],
+        "unsupported": []
+      },
+      "n_bundle_summaries": 3,
+      "n_doc_summaries": 5,
+      "warnings": []
+    }
+  ],
+  "question_count": 2
+}

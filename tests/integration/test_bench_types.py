@@ -93,6 +93,19 @@ def test_run_overview_writes_answers_file(clean_db: str, tmp_path: Path) -> None
     text = out.read_text(encoding="utf-8")
     assert "| Q19 |" in text and "K 採点" in text
     assert res["per_question"][0]["n_bundle_summaries"] == 1
+    assert "llm" not in res["per_question"][0] and res["llm_model"] is None
+    # LLM（fake）付き: 2 回生成して一致・根拠外の言及なし
+    from dbr.shared.llm import get_llm
+
+    res2 = run_overview(
+        QS, dsn=clean_db, embedder=get_embedder("fake"), answers_path=out,
+        llm=get_llm("fake"),
+    )  # fmt: skip
+    llm = res2["per_question"][0]["llm"]
+    assert res2["llm_model"] == "fake" and llm["reproducible"] is True
+    assert llm["unsupported"] == [] and len(llm["seconds"]) == 2
+    text2 = out.read_text(encoding="utf-8")
+    assert "LLM 回答" in text2 and "一覧から:" in text2 and "K 採点 LLM" in text2
 
 
 def test_cli_bench_count_asof_overview_and_ask_all_kinds(
@@ -130,6 +143,19 @@ def test_cli_bench_count_asof_overview_and_ask_all_kinds(
     )
     assert r.exit_code == 0, r.output
     assert (tmp_path / "ans.md").exists()
+    r = runner.invoke(
+        app,
+        ["bench", "--kind", "overview", "--llm", "fake", "--answers",
+         str(tmp_path / "ans2.md"), *common],
+    )  # fmt: skip
+    assert r.exit_code == 0 and "2 回一致" in r.output, r.output
+    assert "一覧から:" in (tmp_path / "ans2.md").read_text(encoding="utf-8")
+    r = runner.invoke(
+        app,
+        ["ask", "references の記録は全体としてどう？", "--model", "fake",
+         "--llm", "fake", "--dsn", clean_db],
+    )  # fmt: skip
+    assert r.exit_code == 0 and "LLM の回答（fake" in r.output, r.output
     asof_json = json.loads(next(out.glob("*-asof.json")).read_text(encoding="utf-8"))
     assert asof_json["correct"] == 1
 

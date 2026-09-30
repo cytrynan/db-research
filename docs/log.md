@@ -6,6 +6,10 @@
 
 <!-- /setup-project でドキュメントを作成したら、最初のエントリをここに追記してください。例:
 
+## 2026-09-30
+
+* **Update**: [機能設計書](functional-design.md) — Overview(F6) に回答層（ローカル LLM・同じ証拠のみ・根拠外の言及検出・2 回一致）と上位文書の集約 rrf_top3 を追記 (kuroko/claude-fable-5-1)
+
 ## 2026-09-29
 
 * **Update**: [検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md) — 受入検証 R4 の訂正: 「8 問が 1 位」→ 7 問、並べ直しの窓幅の感度を集約 max でなく rrf_top3 の値で記述、`ask` 既定は bench と同じ 500 断片で集約する旨を追記 (kuroko/claude-fable-5-1)
