@@ -25,6 +25,8 @@ bash scripts/gate.sh  # 品質ゲート一式（format/check → mypy → pytest
 bash scripts/gate-commit.sh <msg-file>  # ゲートが通った時だけ add→commit（commit はこれだけを使う。手で && を並べない）
 ```
 
+`git commit` の直打ちは PreToolUse フック `.claude/scripts/guard-gated-commit.mjs` が deny する（このプロジェクト配下だけ。他リポジトリへの commit は通る）。故障注入: `node .claude/scripts/tests/test-guard-gated-commit.mjs`。フックを変えたら同じ作業内でテストを再実行する。
+
 <!-- /init-stack 実行でこのセクションが具体的な技術スタック情報に書き換えられます -->
 <!-- 選択肢: Node.js + TypeScript / Python / Go / Rust / なし (言語非依存) -->
 
