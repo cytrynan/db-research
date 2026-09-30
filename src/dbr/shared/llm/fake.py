@@ -15,4 +15,6 @@ class FakeLLM:
         lines = [ln[2:].strip() for ln in user.splitlines() if ln.startswith("- ")][:3]
         if not lines:
             return "一覧には見当たらない。"
-        return "一覧から: " + " / ".join(ln[:60] for ln in lines)
+        # 行の途中で切ると日付が「2026」だけ残って根拠外の数値が生まれる（受入検証）
+        # ので切り詰めない
+        return "一覧から: " + " / ".join(lines)

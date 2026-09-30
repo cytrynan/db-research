@@ -4,19 +4,34 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
 from dbr.features.ingest.handler import BUNDLES
 from dbr.features.ingest.summarize import stale_summaries
-from dbr.features.search import Hit, Mode, NoEmbeddings, aggregate_by_document, search
+from dbr.features.search import (
+    AGG_CHUNKS,
+    Hit,
+    Mode,
+    NoEmbeddings,
+    aggregate_by_document,
+    search,
+)
 from dbr.shared.db import connect
 from dbr.shared.embed import Embedder
 from dbr.shared.llm import LLM
 
-# 根拠外の言及の検出に使う。年月日は 1 つの数値として扱う。2 桁以上だけ見る
-FILE_RE = re.compile(r"[A-Za-z0-9_./-]+\.md")
-NUM_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2,}")
+# 根拠外の言及の検出（受入検証 2026-09-30 で改訂）:
+# - 1 つの正規表現で「ファイル名 | 年月日 | 2 桁以上の数値」を出現順に拾う
+#   （`10.md` はファイル名として 1 回だけ数える）
+# - ファイル名は日本語も含む（空白・区切り記号以外の連なり＋ .md）。前後の記号は落とす
+# - 数値は ASCII 桁だけ。全角の数字は NFKC で半角に寄せてから照合する
+MENTION_RE = re.compile(
+    r"(?P<file>[^\s、。,()「」『』【】:;*`\"']+\.md)"
+    r"|(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})"
+    r"|(?P<num>[0-9]{2,})"
+)
 # プロンプト v2（2026-09-30）。v1「5 文以内」では 1.5B が 27〜89 字の薄い答え
 # （ファイル名 0〜1 個）を返した。観点ごとにファイル名を挙げさせる形に変えた
 SYSTEM_PROMPT = (
@@ -62,9 +77,17 @@ def _top_docs(
     bundles: list[str] | None,
     n: int,
 ) -> list[Hit]:
-    # ① の既定（D-14）と同じ集約で上位文書を選ぶ
+    # ① の既定（D-14）と同じ集約・同じ断片数で上位文書を選ぶ（受入検証: k=50 だと
+    # 集約の結果が ① とずれうる＝「既定の経路 ＝ 測定の経路」）
     return aggregate_by_document(
-        search(question, mode=mode, dsn=dsn, k=50, embedder=embedder, bundles=bundles),
+        search(
+            question,
+            mode=mode,
+            dsn=dsn,
+            k=AGG_CHUNKS,
+            embedder=embedder,
+            bundles=bundles,
+        ),
         "rrf_top3",
     )[:n]
 
@@ -181,18 +204,36 @@ def evidence_text(a: OverviewAnswer) -> str:
     return "\n".join(parts)
 
 
+def _mentions(text: str) -> list[tuple[str, str]]:
+    """(種別, 値) を出現順で。ファイル名は前後の * ` " ' を落とす."""
+    out: list[tuple[str, str]] = []
+    for m in MENTION_RE.finditer(unicodedata.normalize("NFKC", text)):
+        kind = str(m.lastgroup)
+        val = m.group(kind)
+        if kind == "file":
+            val = val.strip("*`\"'")
+        out.append(("num" if kind == "date" else kind, val))
+    return out
+
+
 def unsupported_mentions(text: str, evidence: str) -> list[str]:
-    """回答中のファイル名・数値のうち証拠に無いもの（ハルシネーションの下界。順序は出現順）."""
-    ev_files = set(FILE_RE.findall(evidence))
-    ev_nums = set(NUM_RE.findall(evidence))
+    """回答中のファイル名・数値のうち証拠に無いもの（ハルシネーションの下界。出現順・重複なし）.
+
+    ファイル名の照合: 回答が `bundle/x.md` と書いたら証拠に同じパスが要る（別 bundle を
+    付けた言及は根拠外）。`x.md` だけなら、証拠のどれかのパスの末尾要素と一致すればよい
+    （`x-guidance.md` は `guidance.md` に一致しない＝パス境界あり）。
+    """
+    ev_files = {v for k, v in _mentions(evidence) if k == "file"}
+    ev_bases = {e.rsplit("/", 1)[-1] for e in ev_files}
+    ev_nums = {v for k, v in _mentions(evidence) if k == "num"}
     out: list[str] = []
-    for f in FILE_RE.findall(text):
-        base = f.rsplit("/", 1)[-1]
-        if not any(e.endswith(base) for e in ev_files) and f not in out:
-            out.append(f)
-    for n in NUM_RE.findall(text):
-        if n not in ev_nums and n not in out:
-            out.append(n)
+    for kind, val in _mentions(text):
+        if kind == "file":
+            ok = val in ev_files if "/" in val else val in ev_bases
+        else:
+            ok = val in ev_nums
+        if not ok and val not in out:
+            out.append(val)
     return out
 
 

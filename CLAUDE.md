@@ -22,6 +22,7 @@ uv run ruff format .  # Format
 uv run mypy src       # 型チェック
 uv run pytest         # テスト実行 (カバレッジ込み)
 bash scripts/gate.sh  # 品質ゲート一式（format/check → mypy → pytest db 込み・80%）。K は pwsh -File scripts/gate.ps1
+bash scripts/gate-commit.sh <msg-file>  # ゲートが通った時だけ add→commit（commit はこれだけを使う。手で && を並べない）
 ```
 
 <!-- /init-stack 実行でこのセクションが具体的な技術スタック情報に書き換えられます -->

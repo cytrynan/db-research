@@ -23,6 +23,30 @@ def test_unsupported_mentions_hand_cases() -> None:
     assert unsupported_mentions("16 文書のうち 14 が Life Data", EV) == []
 
 
+def test_unsupported_mentions_order_boundary_width_and_names() -> None:
+    ev = (
+        "- references/bar.md: bar.md: 記録\n- dev/x-guidance.md: x-guidance.md: 文書 16"
+    )
+    # 出現順（数値が先に出れば先）
+    assert unsupported_mentions("123 件は foo.md に", ev) == ["123", "foo.md"]
+    # パス境界: guidance.md は x-guidance.md に一致しない
+    assert unsupported_mentions("guidance.md を参照", ev) == ["guidance.md"]
+    # 別 bundle を付けた言及は根拠外
+    assert unsupported_mentions("memory/bar.md を参照", ev) == ["memory/bar.md"]
+    # 数字だけのファイル名は 1 件（10 を二重に数えない）
+    assert unsupported_mentions("10.md を見た", ev) == ["10.md"]
+    # 全角の数字は NFKC で半角に寄せる（証拠の 16 と一致）
+    assert unsupported_mentions("文書は１６件", ev) == []
+    # 日本語のファイル名も見る。前後の ** は落とす
+    assert unsupported_mentions("健康記録.md と **dev/x-guidance.md**", ev) == [
+        "健康記録.md"
+    ]
+    # 同じ名前が 3 回でも 1 件。空の証拠・空の回答
+    assert unsupported_mentions("foo.md foo.md foo.md", ev) == ["foo.md"]
+    assert unsupported_mentions("a.md 12", "") == ["a.md", "12"]
+    assert unsupported_mentions("", ev) == []
+
+
 def test_evidence_text_and_fake_narrate_are_deterministic() -> None:
     a = OverviewAnswer(
         bundles=["references"],

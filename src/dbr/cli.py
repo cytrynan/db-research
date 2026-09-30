@@ -268,6 +268,10 @@ def ask(
     c = RuleClassifier().classify(question)
     resolved = c.kind if kind == "auto" else kind
     out: dict[str, Any] = {"kind": resolved, "reason": c.reason}
+    if llm != "none" and resolved != "overview":
+        typer.echo(
+            f"WARN: --llm は overview だけで使う（{resolved} では無視）", err=True
+        )
     if resolved == "unknown":
         typer.echo(
             "型を判定できません。--kind find か --kind count を指定してください",
@@ -508,6 +512,10 @@ def bench(
     if agg not in AGGS:
         typer.echo(f"--agg は {AGGS} のいずれか", err=True)
         raise typer.Exit(code=2)
+    if llm != "none" and kind != "overview":
+        typer.echo(
+            f"WARN: --llm は --kind overview だけで使う（{kind} では無視）", err=True
+        )
     qs = load_questions(questions)
     log = lambda m: typer.echo(m, err=True)  # noqa: E731 - 1行の配線
     try:
