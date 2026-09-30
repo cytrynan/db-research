@@ -51,6 +51,9 @@ const cases = [
   ['DENY パス付き git.exe', ev('"C:\\Program Files\\Git\\bin\\git.exe" commit -m x'), true, {}],
   ['DENY PowerShell ツール経由', ev('git commit -m x', { tool_name: 'PowerShell' }), true, {}],
   ['DENY 環境変数代入つき', ev('GIT_AUTHOR_NAME=x git commit -m x'), true, {}],
+  ['DENY cd が変数（解決不能は止める・偽陽性の実例 2026-09-30）', ev('cd "$T" && git commit -m x'), true, {}],
+  ['DENY -C が変数', ev('git -C "$REPO" commit -m x'), true, {}],
+  ['DENY cd がコマンド置換', ev('cd "$(pwd)" && git commit -m x'), true, {}],
 
   // ② 正常系 → 沈黙
   ['PASS gate-commit.sh 経由', ev('bash scripts/gate-commit.sh msg.txt'), false, {}],
@@ -60,6 +63,7 @@ const cases = [
   ['PASS 他リポジトリへ -C', ev('git -C C:/other/repo commit -m x'), false, {}],
   ['PASS 他リポジトリへ cd', ev('cd /c/other/repo && git commit -q -m x'), false, {}],
   ['PASS 他リポジトリへ cd（Windows パス）', ev('cd C:\\Users\\meer0\\.claude && git commit -m x'), false, {}],
+  ['PASS 他リポジトリへ cd の後に export を挟む', ev('cd /c/other/repo && export X=1 && git commit -m x'), false, {}],
   ['PASS echo の中の文字列', ev('echo "git commit"'), false, {}],
   ['PASS ヒアドキュメント本文（行頭が - ）', ev("cat > m.txt <<'EOF'\n- git commit を使わない\nEOF"), false, {}],
   ['PASS git push（commit ではない）', ev('git push origin main'), false, {}],

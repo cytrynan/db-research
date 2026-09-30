@@ -22,13 +22,15 @@
 //
 // 契約: stdin にイベントJSON / exit 0 + stdout JSON（deny のときだけ出力。通常は沈黙）
 // フェイルオープン: 入力が壊れても例外が出ても必ず exit 0。
-// 既知の限界: ヒアドキュメント本文の行頭に `git commit` と書くと誤って止まる（区切りは改行）。
-//   その時は行頭に置かない（`- git commit` のように）。
+// 既知の限界: Bash のコマンド文字列（ヒアドキュメント本文を含む）の中に、区切り（&& ; | 改行）の
+//   直後から始まる `git commit` があると誤って止まる（実例: テストケースの文面を heredoc で
+//   書いた時）。そういう文面は Write ツールでファイルに書いてから実行する。
 
 import fs from 'node:fs';
 import path from 'node:path';
 
 const SEP = /&&|\|\||;|\||\r?\n/;
+const UNRESOLVABLE = /[$`%]/; // 変数・コマンド置換はフックでは展開できない（曖昧なら止める）
 const VALUE_OPTS = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path', '--config-env']);
 
 function unquote(s) {
@@ -117,12 +119,21 @@ export function decide(command, cwd, projectDir) {
     const head = unquote(tokens[0]).toLowerCase();
     if (head === 'cd' || head === 'pushd' || head === 'set-location') {
       const next = tokens[1] && !tokens[1].startsWith('-') ? tokens[1] : null;
+      // 変数・コマンド置換（$T / %T% / `…`）はフックでは展開できない → 以後の対象は「不明」
+      if (next && UNRESOLVABLE.test(next)) { cur = null; continue; }
       cur = next ? normPath(next, cur) || cur : normPath('~') || cur;
       continue;
     }
     if (!isGit(tokens[0])) continue;
     const hit = gitCommitTarget(tokens);
     if (!hit) continue;
+    if ((hit.cDir && UNRESOLVABLE.test(hit.cDir)) || (cur === null && !hit.cDir)) {
+      return (
+        'commit の対象ディレクトリが変数やコマンド置換で書かれていて、フックが解決できない。' +
+        'リテラルのパスで書き直す（他リポジトリなら cd /c/…/repo を直書き、' +
+        'このプロジェクトなら bash scripts/gate-commit.sh <msg-file>）。'
+      );
+    }
     const target = hit.cDir ? normPath(hit.cDir, cur) : cur;
     if (isInside(target, root)) {
       return (
