@@ -10,6 +10,12 @@ from typing import Any
 
 from dbr.features.ingest.handler import BUNDLES
 from dbr.features.ingest.summarize import stale_summaries
+from dbr.features.scope import (
+    DEFAULT_BOOST,
+    DEFAULT_SCOPE,
+    boost_by_bundle,
+    guess_bundles,
+)
 from dbr.features.search import (
     AGG_CHUNKS,
     Hit,
@@ -76,20 +82,25 @@ def _top_docs(
     embedder: Embedder | None,
     bundles: list[str] | None,
     n: int,
+    boost: tuple[list[str] | None, float] | None = None,
 ) -> list[Hit]:
     # ① の既定（D-14）と同じ集約・同じ断片数で上位文書を選ぶ（受入検証: k=50 だと
-    # 集約の結果が ① とずれうる＝「既定の経路 ＝ 測定の経路」）
-    return aggregate_by_document(
+    # 集約の結果が ① とずれうる＝「既定の経路 ＝ 測定の経路」）。
+    # boost が与えられたら全 bundle で検索して推定 bundle を (1+w) 倍する
+    docs = aggregate_by_document(
         search(
             question,
             mode=mode,
             dsn=dsn,
             k=AGG_CHUNKS,
             embedder=embedder,
-            bundles=bundles,
+            bundles=None if boost else bundles,
         ),
         "rrf_top3",
-    )[:n]
+    )
+    if boost:
+        docs = boost_by_bundle(docs, boost[0], boost[1])
+    return docs[:n]
 
 
 def answer(
@@ -99,11 +110,23 @@ def answer(
     embedder: Embedder | None = None,
     bundles: list[str] | None = None,
     top_docs: int = 5,
+    scope: str = DEFAULT_SCOPE,
+    boost_w: float = DEFAULT_BOOST,
 ) -> OverviewAnswer:
+    """④ の回答。scope: none＝全 bundle／filter＝推定 bundle だけ／boost＝推定 bundle を優先.
+
+    質問に bundle 名が明示されていれば推定より優先（pick_bundles）。
+    """
+    guess_note: str | None = None
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
         if bundles is None:
             bundles = pick_bundles(question)
+        if bundles is None and scope != "none":
+            g = guess_bundles(question)
+            if g.bundles:
+                bundles = g.bundles
+                guess_note = f"bundle を推定（{scope}）: {g.reason}"
         if bundles is None:
             cur.execute(
                 "SELECT target_key FROM summary WHERE level = 'bundle' ORDER BY 1"
@@ -127,6 +150,8 @@ def answer(
             out.evidence_ids.append(int(str(r["id"])))
         if not out.bundle_summaries:
             out.warnings.append("bundle 要約が無い（dbr summarize を実行する）")
+        if guess_note:
+            out.warnings.append(guess_note)
 
     # 要約は元テキストの source_hash を持つ。変わっていたら黙って古い要約を出さず WARN
     stale = stale_summaries(dsn, bundles)
@@ -142,9 +167,10 @@ def answer(
     mode: Mode = "embed_ctx" if embedder is not None else "fts"
     hits: list[Hit] = []
     use_fts = mode == "fts"
+    boost = (bundles, boost_w) if (scope == "boost" and guess_note) else None
     if not use_fts:
         try:
-            hits = _top_docs(question, mode, dsn, embedder, bundles, top_docs)
+            hits = _top_docs(question, mode, dsn, embedder, bundles, top_docs, boost)
         except NoEmbeddings:
             hits = []
         if not hits:
@@ -155,7 +181,7 @@ def answer(
             )
             use_fts = True
     if use_fts:
-        hits = _top_docs(question, "fts", dsn, None, bundles, top_docs)
+        hits = _top_docs(question, "fts", dsn, None, bundles, top_docs, boost)
 
     if hits:
         conn = connect(dsn)

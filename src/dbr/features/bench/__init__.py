@@ -10,6 +10,7 @@ from typing import Any
 from dbr.features.bench.metrics import mrr, rank_of, recall_at
 from dbr.features.bench.questions import Question, load_questions
 from dbr.features.bench.report import git_sha, save_json, to_markdown
+from dbr.features.scope import DEFAULT_BOOST, SCOPES, boost_by_bundle, guess_bundles
 from dbr.features.search import AGG_CHUNKS, AGGS, Mode, aggregate_by_document, search
 from dbr.shared.embed import Embedder
 from dbr.shared.rerank import Reranker
@@ -35,9 +36,13 @@ def run_find(
     reranker: Reranker | None = None,
     agg: str = "max",
     rerank_top: int | None = None,
+    scope: str = "none",
+    boost_w: float = DEFAULT_BOOST,
 ) -> dict[str, Any]:
     if agg not in AGGS:
         raise ValueError(f"agg は {AGGS} のいずれか")
+    if scope not in SCOPES:
+        raise ValueError(f"scope は {SCOPES} のいずれか")
     finds = [q for q in questions if q.kind == "find" and q.expected]
     # 正解パスが無い find 行は測れない。黙って母数から外さず、記録に残す
     skipped = [q.id for q in questions if q.kind == "find" and not q.expected]
@@ -57,11 +62,14 @@ def run_find(
         "reranker": reranker.name if reranker else None,
         "agg": agg,
         "rerank_top": rerank_top,  # None＝モード別既定（hybrid 150／embed 20）
+        "scope": scope,
+        "boost_w": boost_w if scope == "boost" else None,
         "modes": {},
     }
     for mode in modes:
         per: list[dict[str, Any]] = []
         for q in finds:
+            guess = guess_bundles(q.text) if scope != "none" else None
             hits = aggregate_by_document(
                 search(
                     q.text,
@@ -72,9 +80,13 @@ def run_find(
                     ef_search=ef_search,
                     reranker=reranker,
                     rerank_top=rerank_top,
+                    bundles=guess.bundles if (guess and scope == "filter") else None,
                 ),
                 agg,
-            )[:DOC_K]
+            )
+            if guess and scope == "boost":
+                hits = boost_by_bundle(hits, guess.bundles, boost_w)
+            hits = hits[:DOC_K]
             keys = [h.doc_key for h in hits]
             per.append(
                 {

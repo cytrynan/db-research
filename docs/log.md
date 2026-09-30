@@ -8,6 +8,11 @@
 
 ## 2026-09-30
 
+* **Update**: [overview の回答](overview-answers.md)・[検索品質の測定結果](bench-results.md) — 既定 boost で ④ を再生成（v10）。Q19 の LLM 回答で根拠外のファイル名 2 件を初検出（v10 節に記録） (kuroko/claude-fable-5-1)
+* **Update**: [検索品質の測定結果](bench-results.md) — v10 節（bundle の絞り込み: ① none 0.90/0.861 → filter・boost 1.00/0.883、④ の期待文書 Q19 1→2・Q20 0→1）と総括の ①④ 行 (kuroko/claude-fable-5-1)
+* **Update**: [決定台帳](decisions.md) — D-16: 既定 scope=boost w=1.0（暫定・技術語→dev の枝は未測定） (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — Search(F3) に scope（推定・boost/filter）、Overview に証拠の bundle 絞り込み (kuroko/claude-fable-5-1)
+* **Update**: [質問セット（20問）](questions.md) — Q19 の期待欄をパスに書き直し（文言は同じ・scope bench の機械照合のため・測定前） (kuroko/claude-fable-5-1)
 * **Update**: [overview の回答](overview-answers.md)・[検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md) — K 採点（抽出型 5/5・LLM 4/3）を記入し、④ は抽出型で足りる・LLM 層は保留と結論。overview-answers に verified: human:K (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md)・[決定台帳](decisions.md)・[overview の回答](overview-answers.md) — 受入検証の回収: v9c（検出器改訂・証拠を ① と同じ 500 断片で選ぶ）の行と Q20 の証拠の変化、v1 プロンプト原文、秒の訂正（37〜198） (kuroko/claude-fable-5-1)
 * **Update**: [検索品質の測定結果](bench-results.md) — v9 節（④ ローカル LLM の回答層: プロンプト v1/v2 の秒・文字数・根拠外 0・2 回一致、判断の質と証拠の偏りの観察、D-15） (kuroko/claude-fable-5-1)

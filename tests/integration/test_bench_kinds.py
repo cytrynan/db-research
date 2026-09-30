@@ -110,6 +110,34 @@ def test_cli_bench_all_kinds_with_fake_models(clean_db: str, tmp_path: Path) -> 
     r = runner.invoke(app, ["bench", "--kind", "find", "--agg", "mean", *common])
     assert r.exit_code == 2
 
+    r = runner.invoke(app, ["bench", "--kind", "scope", *common])
+    assert r.exit_code == 0, r.output
+    sc = json.loads(next(out.glob("*-scope-t.json")).read_text(encoding="utf-8"))
+    assert [c["scope"] for c in sc["find"]] == [
+        "none",
+        "filter",
+        "boost",
+        "boost",
+        "boost",
+    ]
+    assert sc["chunks"] == 500 and set(sc["guesses"]) == {"Q01", "Q02"}
+    r = runner.invoke(
+        app,
+        [
+            "bench",
+            "--kind",
+            "find",
+            "--modes",
+            "embed_ctx",
+            "--scope",
+            "boost",
+            *common,
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    r = runner.invoke(app, ["bench", "--kind", "find", "--scope", "nope", *common])
+    assert r.exit_code == 2
+
     r = runner.invoke(app, ["bench", "--kind", "tune", "--reranker", "fake", *common])
     assert r.exit_code == 0, r.output
     tune = json.loads(next(out.glob("*-tune-t.json")).read_text(encoding="utf-8"))
@@ -198,3 +226,20 @@ def test_cli_ask_rrf_agg_searches_agg_chunks(
         app, ["ask", "x", "--kind", "find", "--agg", "mean", "--dsn", clean_db]
     )
     assert r.exit_code == 2  # 語彙外の agg
+    # scope: 生活語 → references で filter（fixture は memory だけなので 0 件でも exit 0）
+    r = CliRunner().invoke(
+        app,
+        ["ask", "健康の記録はどこ", "--kind", "find", "--scope", "filter", "--model",
+         "fake", "--dsn", clean_db],
+    )  # fmt: skip
+    assert r.exit_code == 0 and "scope=filter" in r.output, r.output
+    r = CliRunner().invoke(
+        app,
+        ["ask", "健康の記録はどこ", "--kind", "find", "--scope", "boost", "--model",
+         "fake", "--dsn", clean_db],
+    )  # fmt: skip
+    assert r.exit_code == 0 and "references←健康" in r.output, r.output
+    r = CliRunner().invoke(
+        app, ["ask", "x", "--kind", "find", "--scope", "nope", "--dsn", clean_db]
+    )
+    assert r.exit_code == 2

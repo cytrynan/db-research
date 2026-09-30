@@ -1,0 +1,74 @@
+{
+  "answers_file": "C:\\Users\\meer0\\dev\\db-research\\docs\\overview-answers.md",
+  "date": "2026-09-30",
+  "git_sha": "bc5ecf8-dirty",
+  "kind": "overview",
+  "llm_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "model": "intfloat/multilingual-e5-small",
+  "per_question": [
+    {
+      "bundles": [
+        "references",
+        "memory"
+      ],
+      "evidence_ids": [
+        1378,
+        237,
+        134,
+        166,
+        99,
+        154,
+        210
+      ],
+      "id": "Q19",
+      "llm": {
+        "chars": 306,
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "reproducible": true,
+        "seconds": [
+          74.7,
+          68.4
+        ],
+        "unsupported": [
+          "references/update_log.md",
+          "references/life_data_update_log.md"
+        ]
+      },
+      "n_bundle_summaries": 2,
+      "n_doc_summaries": 5,
+      "warnings": [
+        "bundle を推定（boost）: references←生活 / memory←方針"
+      ]
+    },
+    {
+      "bundles": [
+        "references"
+      ],
+      "evidence_ids": [
+        237,
+        236,
+        166,
+        82,
+        99,
+        92
+      ],
+      "id": "Q20",
+      "llm": {
+        "chars": 161,
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "reproducible": true,
+        "seconds": [
+          65.5,
+          84.6
+        ],
+        "unsupported": []
+      },
+      "n_bundle_summaries": 1,
+      "n_doc_summaries": 5,
+      "warnings": [
+        "bundle を推定（boost）: references←健康"
+      ]
+    }
+  ],
+  "question_count": 2
+}

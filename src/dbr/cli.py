@@ -13,6 +13,7 @@ from typing import Annotated, Any
 
 import typer
 
+from dbr.features.scope import DEFAULT_BOOST, DEFAULT_SCOPE
 from dbr.shared.db import LoopbackViolation, connect, resolve_dsn
 from dbr.shared.db.migrate import migrate as run_migrations
 
@@ -201,6 +202,15 @@ LlmOpt = Annotated[
     str,
     typer.Option("--llm", help="overview: ローカル LLM 名 | fake | none（既定 none）"),
 ]
+ScopeOpt = Annotated[
+    str,
+    typer.Option(
+        "--scope", help="bundle の絞り込み none | filter | boost（質問の語で推定）"
+    ),
+]
+BoostOpt = Annotated[
+    float, typer.Option("--boost-w", help="scope=boost の重み（(1+w) 倍）")
+]
 
 
 def _llm_or_exit(name: str) -> Any:
@@ -227,6 +237,8 @@ def ask(
         int | None,
         typer.Option("--rerank-top", help="並べ直す候補数。省略でモード別既定"),
     ] = None,
+    scope: ScopeOpt = DEFAULT_SCOPE,  # D-16（v10）
+    boost_w: BoostOpt = DEFAULT_BOOST,
     kind: Annotated[
         str, typer.Option("--kind", help="auto | find | count | asof | overview")
     ] = "auto",
@@ -244,6 +256,7 @@ def ask(
     from dbr.features.asof import parse_at_option
     from dbr.features.classify import RuleClassifier
     from dbr.features.count import VIEWS, ask_view
+    from dbr.features.scope import SCOPES, boost_by_bundle, guess_bundles
     from dbr.features.search import (
         AGG_CHUNKS,
         AGGS,
@@ -257,6 +270,9 @@ def ask(
     # --at の書式は asof 以外でも exit 2。受入検証 D1）
     if kind not in ASK_KINDS:
         typer.echo(f"--kind は {' | '.join(ASK_KINDS)}", err=True)
+        raise typer.Exit(code=2)
+    if scope not in SCOPES:
+        typer.echo(f"--scope は {SCOPES} のいずれか", err=True)
         raise typer.Exit(code=2)
     at_dt = parse_at_option(at) if at is not None else None
     if at is not None and at_dt is None:
@@ -290,6 +306,7 @@ def ask(
         # 集約 rrf_* は下位断片の和も見るので bench と同じ断片数（AGG_CHUNKS）で
         # 検索する（受入検証 R4(a): 25 断片では測定と順位が食い違った）。max は k*5
         n_chunks = k * 5 if agg == "max" else max(AGG_CHUNKS, k)
+        guess = guess_bundles(question) if scope != "none" else None
         try:
             hits = aggregate_by_document(
                 search(
@@ -300,9 +317,13 @@ def ask(
                     embedder=emb,
                     reranker=rr,
                     rerank_top=rerank_top,
+                    bundles=guess.bundles if (guess and scope == "filter") else None,
                 ),
                 agg,
-            )[:k]
+            )
+            if guess and scope == "boost":
+                hits = boost_by_bundle(hits, guess.bundles, boost_w)
+            hits = hits[:k]
         except NoEmbeddings as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=5) from None
@@ -320,7 +341,8 @@ def ask(
         if as_json:
             typer.echo(json.dumps(out, ensure_ascii=False))
             return
-        typer.echo(f"[{resolved}] {c.reason} / mode={mode} / agg={agg}")
+        scope_note = f" / scope={scope}（{guess.reason}）" if guess else ""
+        typer.echo(f"[{resolved}] {c.reason} / mode={mode} / agg={agg}{scope_note}")
         for i, h in enumerate(hits, start=1):
             typer.echo(
                 f"{i:>2}. {h.doc_key}  §{h.heading_path or '-'}  "
@@ -406,7 +428,13 @@ def ask(
     emb_ov = _embedder_or_exit(model)
     llm_obj = _llm_or_exit(llm) if llm != "none" else None
     try:
-        ov = overview_answer(question, dsn=resolve_dsn(dsn), embedder=emb_ov)
+        ov = overview_answer(
+            question,
+            dsn=resolve_dsn(dsn),
+            embedder=emb_ov,
+            scope=scope,
+            boost_w=boost_w,
+        )
     except LoopbackViolation as exc:
         raise _exit_on_loopback(exc) from None
     nar = narrate(question, ov, llm_obj) if llm_obj is not None else None
@@ -485,11 +513,13 @@ def bench(
         typer.Option("--rerank-top", help="find: 並べ直す候補数（省略で既定）"),
     ] = None,
     llm: LlmOpt = "none",
+    scope: ScopeOpt = "none",
+    boost_w: BoostOpt = 1.0,
     dsn: DsnOpt = None,
 ) -> None:
     """質問セットを流して指標を出す.
 
-    --kind は find / sweep / hnsw / tune / count / asof / overview。
+    --kind は find / sweep / hnsw / tune / scope / count / asof / overview。
     """
     from dbr.features.bench import load_questions, run_find, save_json, to_markdown
     from dbr.features.bench.asof import asof_markdown, run_asof
@@ -497,14 +527,29 @@ def bench(
     from dbr.features.bench.hnsw import hnsw_markdown, run_hnsw
     from dbr.features.bench.overview import overview_markdown, run_overview
     from dbr.features.bench.report import LABEL_RE
+    from dbr.features.bench.scope import run_scope, scope_markdown
     from dbr.features.bench.sweep import run_sweep, sweep_markdown
     from dbr.features.bench.tune import run_tune, tune_markdown
+    from dbr.features.scope import SCOPES
     from dbr.features.search import AGGS, MODES, NoEmbeddings
 
-    if kind not in {"find", "sweep", "hnsw", "tune", "count", "asof", "overview"}:
+    if kind not in {
+        "find",
+        "sweep",
+        "hnsw",
+        "tune",
+        "scope",
+        "count",
+        "asof",
+        "overview",
+    }:
         typer.echo(
-            "--kind は find | sweep | hnsw | tune | count | asof | overview", err=True
+            "--kind は find | sweep | hnsw | tune | scope | count | asof | overview",
+            err=True,
         )
+        raise typer.Exit(code=2)
+    if scope not in SCOPES:
+        typer.echo(f"--scope は {SCOPES} のいずれか", err=True)
         raise typer.Exit(code=2)
     if label is not None and not LABEL_RE.fullmatch(label):
         typer.echo("--label は [A-Za-z0-9_-]{1,32}", err=True)
@@ -542,6 +587,8 @@ def bench(
                 reranker=rr,
                 agg=agg,
                 rerank_top=rerank_top,
+                scope=scope,
+                boost_w=boost_w,
             )
             text = to_markdown(result)
         elif kind == "count":
@@ -574,6 +621,14 @@ def bench(
                 repo=REPO_ROOT,
             )
             text = sweep_markdown(result)
+        elif kind == "scope":
+            result = run_scope(
+                qs,
+                dsn=resolve_dsn(dsn),
+                embedder=_embedder_or_exit(model),
+                repo=REPO_ROOT,
+            )
+            text = scope_markdown(result)
         elif kind == "tune":
             result = run_tune(
                 qs,

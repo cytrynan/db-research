@@ -1,0 +1,369 @@
+{
+  "agg": "rrf_top3",
+  "chunks": 500,
+  "date": "2026-09-30",
+  "find": [
+    {
+      "mrr": 0.861111111111111,
+      "ranks": {
+        "Q01": 1,
+        "Q02": 1,
+        "Q03": 1,
+        "Q04": 2,
+        "Q05": 1,
+        "Q06": 1,
+        "Q07": 1,
+        "Q08": 9,
+        "Q09": 1,
+        "Q10": 1
+      },
+      "recall@20": 1.0,
+      "recall@5": 0.9,
+      "scope": "none",
+      "w": 0.0
+    },
+    {
+      "mrr": 0.8833333333333334,
+      "ranks": {
+        "Q01": 1,
+        "Q02": 1,
+        "Q03": 1,
+        "Q04": 2,
+        "Q05": 1,
+        "Q06": 1,
+        "Q07": 1,
+        "Q08": 3,
+        "Q09": 1,
+        "Q10": 1
+      },
+      "recall@20": 1.0,
+      "recall@5": 1.0,
+      "scope": "filter",
+      "w": 0.0
+    },
+    {
+      "mrr": 0.8833333333333334,
+      "ranks": {
+        "Q01": 1,
+        "Q02": 1,
+        "Q03": 1,
+        "Q04": 2,
+        "Q05": 1,
+        "Q06": 1,
+        "Q07": 1,
+        "Q08": 3,
+        "Q09": 1,
+        "Q10": 1
+      },
+      "recall@20": 1.0,
+      "recall@5": 1.0,
+      "scope": "boost",
+      "w": 0.5
+    },
+    {
+      "mrr": 0.8833333333333334,
+      "ranks": {
+        "Q01": 1,
+        "Q02": 1,
+        "Q03": 1,
+        "Q04": 2,
+        "Q05": 1,
+        "Q06": 1,
+        "Q07": 1,
+        "Q08": 3,
+        "Q09": 1,
+        "Q10": 1
+      },
+      "recall@20": 1.0,
+      "recall@5": 1.0,
+      "scope": "boost",
+      "w": 1.0
+    },
+    {
+      "mrr": 0.8833333333333334,
+      "ranks": {
+        "Q01": 1,
+        "Q02": 1,
+        "Q03": 1,
+        "Q04": 2,
+        "Q05": 1,
+        "Q06": 1,
+        "Q07": 1,
+        "Q08": 3,
+        "Q09": 1,
+        "Q10": 1
+      },
+      "recall@20": 1.0,
+      "recall@5": 1.0,
+      "scope": "boost",
+      "w": 2.0
+    }
+  ],
+  "find_question_count": 10,
+  "git_sha": "bc5ecf8-dirty",
+  "guesses": {
+    "Q01": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←花粉"
+    },
+    "Q02": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←メガネ"
+    },
+    "Q03": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←好み"
+    },
+    "Q04": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←バイト"
+    },
+    "Q05": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←就活"
+    },
+    "Q06": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←目が"
+    },
+    "Q07": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←好き"
+    },
+    "Q08": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←家に"
+    },
+    "Q09": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←卒業"
+    },
+    "Q10": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←扶養"
+    },
+    "Q19": {
+      "bundles": [
+        "references",
+        "memory"
+      ],
+      "reason": "references←生活 / memory←方針"
+    },
+    "Q20": {
+      "bundles": [
+        "references"
+      ],
+      "reason": "references←健康"
+    }
+  },
+  "kind": "scope",
+  "mode": "embed_ctx",
+  "model": "intfloat/multilingual-e5-small",
+  "overview": [
+    {
+      "per_question": [
+        {
+          "bundles_in_top5": {
+            "dev": 3,
+            "references": 2
+          },
+          "expected_in_top5": 1,
+          "expected_total": 4,
+          "id": "Q19",
+          "top5": [
+            "dev/token-efficiency.md",
+            "references/log.md",
+            "references/profile.md",
+            "dev/recording.md",
+            "dev/anthropic-official-guidance.md"
+          ]
+        },
+        {
+          "bundles_in_top5": {
+            "dev": 1,
+            "references": 4
+          },
+          "expected_in_top5": 0,
+          "expected_total": 1,
+          "id": "Q20",
+          "top5": [
+            "references/workout.md",
+            "references/profile.md",
+            "dev/recording.md",
+            "references/fuyou.md",
+            "references/home.md"
+          ]
+        }
+      ],
+      "scope": "none",
+      "w": 0.0
+    },
+    {
+      "per_question": [
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 2,
+          "expected_total": 4,
+          "id": "Q19",
+          "top5": [
+            "references/log.md",
+            "references/profile.md",
+            "references/preferences.md",
+            "references/home.md",
+            "references/work.md"
+          ]
+        },
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 1,
+          "expected_total": 1,
+          "id": "Q20",
+          "top5": [
+            "references/workout.md",
+            "references/profile.md",
+            "references/fuyou.md",
+            "references/health.md",
+            "references/home.md"
+          ]
+        }
+      ],
+      "scope": "filter",
+      "w": 0.0
+    },
+    {
+      "per_question": [
+        {
+          "bundles_in_top5": {
+            "dev": 1,
+            "references": 4
+          },
+          "expected_in_top5": 2,
+          "expected_total": 4,
+          "id": "Q19",
+          "top5": [
+            "references/log.md",
+            "references/profile.md",
+            "references/home.md",
+            "references/preferences.md",
+            "dev/token-efficiency.md"
+          ]
+        },
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 1,
+          "expected_total": 1,
+          "id": "Q20",
+          "top5": [
+            "references/workout.md",
+            "references/profile.md",
+            "references/fuyou.md",
+            "references/home.md",
+            "references/health.md"
+          ]
+        }
+      ],
+      "scope": "boost",
+      "w": 0.5
+    },
+    {
+      "per_question": [
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 2,
+          "expected_total": 4,
+          "id": "Q19",
+          "top5": [
+            "references/log.md",
+            "references/profile.md",
+            "references/home.md",
+            "references/preferences.md",
+            "references/university.md"
+          ]
+        },
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 1,
+          "expected_total": 1,
+          "id": "Q20",
+          "top5": [
+            "references/workout.md",
+            "references/profile.md",
+            "references/fuyou.md",
+            "references/home.md",
+            "references/health.md"
+          ]
+        }
+      ],
+      "scope": "boost",
+      "w": 1.0
+    },
+    {
+      "per_question": [
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 2,
+          "expected_total": 4,
+          "id": "Q19",
+          "top5": [
+            "references/log.md",
+            "references/profile.md",
+            "references/home.md",
+            "references/preferences.md",
+            "references/university.md"
+          ]
+        },
+        {
+          "bundles_in_top5": {
+            "references": 5
+          },
+          "expected_in_top5": 1,
+          "expected_total": 1,
+          "id": "Q20",
+          "top5": [
+            "references/workout.md",
+            "references/profile.md",
+            "references/fuyou.md",
+            "references/home.md",
+            "references/health.md"
+          ]
+        }
+      ],
+      "scope": "boost",
+      "w": 2.0
+    }
+  ],
+  "overview_question_count": 2,
+  "sudachi_dict": "sudachidict_core==20260723.1"
+}

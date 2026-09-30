@@ -103,6 +103,31 @@ def test_overview_answer_with_embeddings_and_fallback(clean_db: str) -> None:
     assert pick_bundles("devcontainer の設定は？") is None  # 部分一致はしない
 
 
+def test_overview_scope_filter_and_boost_use_guessed_bundles(clean_db: str) -> None:
+    run(FIXTURES / "kuroko", "memory", clean_db, log=lambda _m: None)
+    run(FIXTURES / "dated", "references", clean_db, log=lambda _m: None)
+    run_summarize("memory", clean_db)
+    run_summarize("references", clean_db)
+    fake = get_embedder("fake")
+    run_embed("memory", "ctx", clean_db, fake)
+    run_embed("references", "ctx", clean_db, fake)
+    q = "扶養と健康の記録は全体としてどう？"  # 扶養・健康 → references
+    a0 = answer(
+        q, dsn=clean_db, embedder=fake, scope="none"
+    )  # none: 全 bundle（既定は boost）
+    assert set(a0.bundles) == {"memory", "references"}
+    a1 = answer(q, dsn=clean_db, embedder=fake, scope="filter")
+    assert a1.bundles == ["references"]
+    assert all(d["doc"].startswith("references/") for d in a1.doc_summaries)
+    assert any("bundle を推定（filter）" in w for w in a1.warnings)
+    a2 = answer(q, dsn=clean_db, embedder=fake, scope="boost", boost_w=2.0)
+    assert a2.bundles == ["references"]  # 証拠の bundle 要約は推定側
+    assert any("bundle を推定（boost）" in w for w in a2.warnings)
+    # bundle 名の明示は推定より優先
+    a3 = answer("memory の健康の記録は？", dsn=clean_db, embedder=fake, scope="filter")
+    assert a3.bundles == ["memory"] and not any("推定" in w for w in a3.warnings)
+
+
 def test_overview_falls_back_to_fts_when_target_bundle_has_no_embeddings(
     clean_db: str,
 ) -> None:

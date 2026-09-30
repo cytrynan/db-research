@@ -202,10 +202,10 @@ status: draft
 ### 20 問の総括（2026-09-29 時点）
 | 型 | 問数 | 結果 |
 |---|---|---|
-| ① 探し物 | 10 | recall@5 0.90 / **MRR 0.861**（embed_ctx＋文書集約 rrf_top3・v8・D-14。並べ直しは既定にしない） |
+| ① 探し物 | 10 | **recall@5 1.00 / MRR 0.883**（embed_ctx＋rrf_top3＋bundle の boost・v10・D-16。並べ直しは既定にしない） |
 | ② 数える | 4 | 4/4 stable（v7・Q12 は `v_verified`） |
 | ③ 時点 | 4 | 4/4（断片→文書→全体の 2 段。受入検証 D1〜D5 の回収後も 4/4・2 回一致＝v7） |
-| ④ 全体 | 2 | K 採点待ち（v9: 抽出型＋ローカル LLM v1/v2 の回答を並べた。根拠外 0・2 回一致） |
+| ④ 全体 | 2 | K 採点済み（抽出型 5/5・LLM 4/3）。証拠の bundle 絞り込みで期待文書 Q19 1/4→2/4・Q20 0/1→1/1（v10） |
 
 
 ## v8（2026-09-29・① find の再調整＝並べ直しの候補を埋め込みだけにする／断片→文書の集約）
@@ -276,3 +276,41 @@ status: draft
 
 ### 決定（D-15・`docs/decisions.md`）
 ローカル LLM の回答層を**配線・測定はしたが既定にはしない**（`--llm` 省略時は抽出型のみ）。K が `overview-answers.md` で抽出型と LLM（v2）を採点してから、次の一手＝**証拠の切り方**（質問の語で bundle を絞る・「生活／健康」→ references 優先）を先に直す。モデルの大型化（3B・速度 2 倍遅）はその後。
+
+
+## v10（2026-09-30・bundle の絞り込み＝質問の語から対象 bundle を推定して証拠を絞る／優先する）
+
+> 一次記録: `bench/results/20260930-scope-v10.json`（git `bc5ecf8-dirty`）。mode=embed_ctx・agg=rrf_top3・500 断片（D-14 の既定）に固定し、scope だけを変えた。推定は閉じた語彙（生活・体・お金・家・仕事の語 → references／実装・設定の語 → dev／方針・案件の語 → memory。固有名詞と両義語は入れない）。**測定前に Q19 の期待欄をパスに書き直した**（文言は同じ・機械照合のため）。
+
+### ① find 10 問
+| scope / w | recall@5 | recall@20 | MRR | 質問別順位 |
+|---|---|---|---|---|
+| none（v8 の既定と同じ） | 0.90 | 1.00 | 0.861 | 1, 1, 1, 2, 1, 1, 1, 9, 1, 1 |
+| filter | **1.00** | 1.00 | **0.883** | 1, 1, 1, 2, 1, 1, 1, **3**, 1, 1 |
+| boost w=0.5 / 1.0 / 2.0 | **1.00** | 1.00 | **0.883** | 同上 |
+
+### ④ overview 2 問（上位 5 文書＝証拠に期待文書が入るか）
+| scope / w | Q19 期待 4 件のうち | Q19 の bundle 内訳 | Q20 期待 1 件のうち | Q20 の bundle 内訳 |
+|---|---|---|---|---|
+| none | 1 | dev 3・references 2 | 0 | references 4・dev 1 |
+| filter | 2 | references 5 | 1 | references 5 |
+| boost 0.5 | 2 | references 4・dev 1 | 1 | references 5 |
+| boost 1.0 / 2.0 | 2 | references 5 | 1 | references 5 |
+
+推定 bundle: find 10 問すべて references（生活語）、Q19 は references＋memory（「生活」＋「方針」）、Q20 は references（「健康」）。
+
+**発見**:
+1. **語彙 1 段で Q08 が 9 位 → 3 位**（「家に」→ references）。① の取りこぼしは埋め込みの弱さより、dev/memory の技術・運用文書が同じ語（効率・ツール・記録）で紛れ込むことだった。v8 で並べ直し器に頼ろうとした問題が、bundle の優先で解けた。
+2. **④ の証拠は bundle を絞るだけで戻る**（Q20 の health.md 0 → 1、Q19 の期待 1 → 2 件）。v9c で LLM の答えが薄かった主因は証拠側だった、という v9 の読みと整合。
+3. **filter と boost は今回のデータで同点**。違いが出るのは推定が外れた時で、そういう質問が bench に無い（10 問すべて references。技術語 → dev・方針語 → memory の枝は未測定）。
+
+### ④ の回答を新しい既定（boost）で再生成（`bench --kind overview --llm Qwen… --label v10`）
+| 問 | 証拠の上位 5（bundle） | LLM 秒 | 文字数 | 根拠外の言及 | 2 回一致 |
+|---|---|---|---|---|---|
+| Q19 | log / profile / home / preferences / university（references 5） | 74.7 / 68.4 | 306 | **2**（`references/update_log.md`・`references/life_data_update_log.md`＝存在しないファイル名） | ○ |
+| Q20 | workout / profile / fuyou / home / health（references 5） | 65.5 / 84.6 | 161 | 0 | ○ |
+
+**検出器が初めて根拠外を捕まえた**: Q19 で LLM が証拠に無いファイル名を 2 つ作った（v9〜v9c の 6 回答は 0 だった）。証拠が「更新ログ」の description に寄った途端に、それらしい英語のファイル名を生成している。根拠外の言及が 0 でない回答は K 採点でも「LLM 列は根拠外あり」として読む。K 採点用の `docs/overview-answers.md` は v10 の回答に更新済み（再採点は任意。v9c の採点は抽出型 5/5・LLM 4/3）。
+
+### 決定（D-16・`docs/decisions.md`）
+既定を **scope=boost・w=1.0** に（`ask` と ④ の両方。filter と同点なら、推定が外れても他 bundle が残る柔らかい方）。w は Q19 の上位 5 が全部 references になる最小値。限界: 技術語 → dev の枝は bench に質問が無く未測定＝質問セットの拡張（K 判断待ち）で回収する。

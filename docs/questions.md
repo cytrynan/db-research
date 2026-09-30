@@ -41,7 +41,7 @@ status: draft
 | Q16 | キャリアの候補職種は、2026-08 より前の時点では何と書いてあった？ | asof | `references/work.md` `2026-08-11`（3候補の申告が最初の事実。それより前の記録は無い＝「その時点の記録なし → 最初の事実は 2026-08-11」と示せれば正解） | 「より前」を問う（基準の期間を含めない。「以前／までに」は基準日を含む＝受入検証 D2）。**訂正（2026-09-29 受入検証）**: 当初「INDEX.md 2026-08-11 vs work.md 2026-08-10 の不整合」と書いて 2026-08-10 も正解日付にしたが、work.md に 2026-08-10 の記載は無い（grep 0 件・2026-08-11 は 5 件）。DB の valid_from（timestamptz）が UTC 表示で 08-10 に見えたのを日付と読んだくろこの誤読。正解日付は 2026-08-11 のみ |
 | Q17 | 収益目標を決めたのはいつで、当時の3枠は？ | asof | `references/money.md` `2026-07-26`（収益目標の K決定） | recorded_at と valid_from の一致確認 |
 | Q18 | 2026-09 時点で、営業（受託）の能動活動は動いていた？ | asof | `memory/team-kuroko-plan.md` `memory/sales-routine-two-mechanisms.md` `2026-08-24`（能動営業・定期タスクの停止）＋ `references/money.md` | 「停止」という状態変化を時点で答える。memory バンドルの取り込みが前提。**2026-09-29 に sales-routine を正解ファイルに追加**（初回 bench で当該ファイルの 2026-08-24 の事実が返り、内容が正しかったため。期待欄の網羅漏れ） |
-| Q19 | 生活の「効率化」方針は、全体としてどのファイルにどう反映されてる？ | overview | INDEX 横断トピック「効率化・最適化（北極星）」→ profile / home / money / tools の要約 | バンドル要約＋リンク |
+| Q19 | 生活の「効率化」方針は、全体としてどのファイルにどう反映されてる？ | overview | `references/profile.md` `references/home.md` `references/money.md` `references/tools.md`（INDEX 横断トピック「効率化・最適化（北極星）」の要約。**2026-09-30 に文言をパスに書き直した**＝内容は同じ。scope bench で「上位 5 の証拠に入るか」を機械照合するため・測定前） | バンドル要約＋リンク |
 | Q20 | K の健康まわりの記録、全体として何が手厚くて何が薄い？ | overview | `references/health.md` 全節＋INDEX「空欄・未着手」 | 要約階層（document → section）で答える |
 
 ## 運用
