@@ -119,10 +119,12 @@ def test_overview_scope_filter_and_boost_use_guessed_bundles(clean_db: str) -> N
     a1 = answer(q, dsn=clean_db, embedder=fake, scope="filter")
     assert a1.bundles == ["references"]
     assert all(d["doc"].startswith("references/") for d in a1.doc_summaries)
-    assert any("bundle を推定（filter）" in w for w in a1.warnings)
+    assert any("bundle を推定（filter）" in w and "対象外" in w for w in a1.warnings)
     a2 = answer(q, dsn=clean_db, embedder=fake, scope="boost", boost_w=2.0)
     assert a2.bundles == ["references"]  # 証拠の bundle 要約は推定側
-    assert any("bundle を推定（boost）" in w for w in a2.warnings)
+    assert any("bundle を推定（boost）" in w and "残す" in w for w in a2.warnings)
+    with pytest.raises(ValueError, match="scope"):  # 語彙外は黙って filter にしない
+        answer(q, dsn=clean_db, embedder=fake, scope="nope")
     # bundle 名の明示は推定より優先
     a3 = answer("memory の健康の記録は？", dsn=clean_db, embedder=fake, scope="filter")
     assert a3.bundles == ["memory"] and not any("推定" in w for w in a3.warnings)

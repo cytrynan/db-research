@@ -6,6 +6,16 @@
 
 <!-- /setup-project でドキュメントを作成したら、最初のエントリをここに追記してください。例:
 
+## 2026-08-01
+* **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
+-->
+
+## 2026-10-03
+
+* **Update**: [検索品質の測定結果](bench-results.md) — v10 に「受入検証で分かった限界と訂正」節（in-sample・外れた時の被害は未測定・部分一致の誤推定・boost の実装修正・bench の検索回数）。発見 1 の裏づけの無い原因記述を訂正、格子の中の最小と明記 (kuroko/claude-fable-5-1)
+* **Update**: [決定台帳](decisions.md) — D-16 の理由欄に受入検証の追記（in-sample・格子・外れた時の被害は未測定） (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — scope の boost を「2 列の安定マージ・負のスコアは割る」に、overview の warnings と scope 検査を追記 (kuroko/claude-fable-5-1)
+
 ## 2026-09-30
 
 * **Update**: [overview の回答](overview-answers.md)・[検索品質の測定結果](bench-results.md) — 既定 boost で ④ を再生成（v10）。Q19 の LLM 回答で根拠外のファイル名 2 件を初検出（v10 節に記録） (kuroko/claude-fable-5-1)
@@ -61,7 +71,3 @@
 * **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版ドラフト（F1〜F7 MVP・F8/F9 将来・KPI 型別正答率・ローカル接続強制）。K 承認待ち (kuroko/claude-fable-5-1)
 * **Creation**: [決定台帳](decisions.md) — 2026-09-29 の決定 D-1〜D-10（D-4a 撤回含む）と未決事項を台帳化 (kuroko/claude-fable-5-1)
 * **Creation**: [研究の方向づけ（2026-09-29）](ideas/20260929-research-direction.md) — 質問4分類・データ置き場の境界・OKF正本＋DB派生索引・有効期間の独自キー方針を下書き化 (kuroko/claude-fable-5-1)
-
-## 2026-08-01
-* **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
--->

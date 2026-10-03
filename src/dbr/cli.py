@@ -513,8 +513,8 @@ def bench(
         typer.Option("--rerank-top", help="find: 並べ直す候補数（省略で既定）"),
     ] = None,
     llm: LlmOpt = "none",
-    scope: ScopeOpt = "none",
-    boost_w: BoostOpt = 1.0,
+    scope: ScopeOpt = "none",  # 既定 none＝v4〜v8 と比較できるベースライン
+    boost_w: BoostOpt = DEFAULT_BOOST,  # ask と同じ定数（受入検証 R3）
     dsn: DsnOpt = None,
 ) -> None:
     """質問セットを流して指標を出す.

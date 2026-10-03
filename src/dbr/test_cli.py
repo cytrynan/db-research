@@ -46,3 +46,21 @@ def test_missing_dsn_is_an_error(monkeypatch) -> None:  # type: ignore[no-untype
     monkeypatch.delenv("DBR_DSN", raising=False)
     result = runner.invoke(app, ["count", "v_by_bundle"])
     assert result.exit_code != 0
+
+
+def test_scope_defaults_share_the_same_constants() -> None:
+    """ask・bench・overview・run_find の既定が DEFAULT_SCOPE/DEFAULT_BOOST そのもの（受入検証 R3）.
+
+    値でなく同一オブジェクトで照合する（リテラル 1.0 の直書きは別オブジェクトになる）。
+    """
+    import inspect
+
+    from dbr import cli
+    from dbr.features import scope as sc
+    from dbr.features.bench import run_find
+    from dbr.features.overview import answer
+
+    for fn in (cli.ask, cli.bench, answer, run_find):
+        assert inspect.signature(fn).parameters["boost_w"].default is sc.DEFAULT_BOOST
+    for fn in (cli.ask, answer):
+        assert inspect.signature(fn).parameters["scope"].default is sc.DEFAULT_SCOPE

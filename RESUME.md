@@ -23,6 +23,7 @@
 
 ## 再開の手順
 ```bash
+# PC 再起動後は Docker Desktop が落ちている（docker ps が npipe エラー）→ 先に Docker Desktop を起動。起動直後に落ちる時は docker-desktop-recover スキル
 docker compose up -d --wait && uv run dbr migrate          # 再実行は 0 件
 bash scripts/gate.sh                                        # ruff → mypy → pytest（db 含む・80%）。K は pwsh -File scripts/gate.ps1
 uv run dbr count v_by_bundle                                 # 実データが残っているか

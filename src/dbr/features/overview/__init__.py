@@ -13,6 +13,7 @@ from dbr.features.ingest.summarize import stale_summaries
 from dbr.features.scope import (
     DEFAULT_BOOST,
     DEFAULT_SCOPE,
+    SCOPES,
     boost_by_bundle,
     guess_bundles,
 )
@@ -117,6 +118,8 @@ def answer(
 
     質問に bundle 名が明示されていれば推定より優先（pick_bundles）。
     """
+    if scope not in SCOPES:  # 語彙外が黙って filter と同じ動きにならないように
+        raise ValueError(f"scope は {SCOPES} のいずれか")
     guess_note: str | None = None
     conn = connect(dsn)
     with conn, conn.cursor() as cur:
@@ -126,7 +129,10 @@ def answer(
             g = guess_bundles(question)
             if g.bundles:
                 bundles = g.bundles
-                guess_note = f"bundle を推定（{scope}）: {g.reason}"
+                rest = "対象外" if scope == "filter" else "上位文書の候補に残す"
+                guess_note = (
+                    f"bundle を推定（{scope}）: {g.reason}（他の bundle は{rest}）"
+                )
         if bundles is None:
             cur.execute(
                 "SELECT target_key FROM summary WHERE level = 'bundle' ORDER BY 1"

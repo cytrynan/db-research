@@ -1,7 +1,8 @@
 """bundle 絞り込み bench: ① の順位と ④ の証拠に scope（none / filter / boost×w）が効くかを測る.
 
 find は mode=embed_ctx・agg=rrf_top3（D-14）に固定し、全 bundle の検索は 1 回だけ行って
-boost は後処理で当てる（filter だけ推定 bundle で検索し直す）。
+boost は後処理で当てる（filter だけ推定 bundle で検索し直す）。overview も同じく質問ごとに
+全 bundle 1 回＋filter 1 回。
 overview は上位 5 文書のうち期待文書（questions.md の期待欄のパス）が何件入るかと bundle 内訳。
 """
 
@@ -72,13 +73,17 @@ def run_scope(
         guesses[q.id] = {"bundles": g.bundles, "reason": g.reason}
         for c, ds in docs.items():
             find_ranks[c][q.id] = rank_of(q.expected, [d.doc_key for d in ds[:DOC_K]])
+    # overview も検索は質問ごとに 1 回（全 bundle）＋ filter 1 回。セルは同じ結果への後処理
+    # （受入検証 R4: セルのループの内側で毎回検索していた。結果は決定的なので数値は同じ）
+    ov_docs: dict[str, dict[tuple[str, float], list[Hit]]] = {}
+    for q in ovs:
+        ov_docs[q.id], g = _docs_for_cells(q.text, dsn=dsn, embedder=embedder)
+        guesses[q.id] = {"bundles": g.bundles, "reason": g.reason}
     ov_cells: list[dict[str, Any]] = []
     for scope, w in CELLS:
         per: list[dict[str, Any]] = []
         for q in ovs:
-            docs, g = _docs_for_cells(q.text, dsn=dsn, embedder=embedder)
-            guesses[q.id] = {"bundles": g.bundles, "reason": g.reason}
-            top = [d.doc_key for d in docs[(scope, w)][:EVIDENCE_K]]
+            top = [d.doc_key for d in ov_docs[q.id][(scope, w)][:EVIDENCE_K]]
             per.append(
                 {
                     "id": q.id,

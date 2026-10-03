@@ -47,3 +47,73 @@ def test_boost_is_deterministic_identity_and_order_preserving() -> None:
         "y.md",
     ]
     assert SCOPES == ("none", "filter", "boost")
+
+
+def test_boost_keeps_group_order_on_unsorted_input_and_never_lowers() -> None:
+    """受入検証 R2: 並べ直し × agg=max はスコア降順でない列が来る。各群の相対順位は不変."""
+    docs = [
+        _h(1, "dev", "P.md", 0.2),
+        _h(2, "dev", "Q.md", 0.9),
+        _h(3, "references", "R.md", 0.1),
+    ]
+    out = boost_by_bundle(docs, ["references"], 1.0)
+    # R は 0.2 に上がるが P（0.2・元の順位が上）と同点 → P, Q, R。P/Q は入れ替えない
+    assert [d.rel_path for d in out] == ["P.md", "Q.md", "R.md"]
+    assert out[2].score == 0.2
+    # 負のスコア（cosine・ロジット）: 掛けると下がるので割る。B は C より上のまま
+    neg = [
+        _h(1, "dev", "A.md", 0.1),
+        _h(2, "references", "B.md", -0.02),
+        _h(3, "dev", "C.md", -0.03),
+    ]
+    out = boost_by_bundle(neg, ["references"], 1.0)
+    assert [d.rel_path for d in out] == ["A.md", "B.md", "C.md"]
+    assert out[1].score == -0.01
+    assert boost_by_bundle([], ["references"], 1.0) == []
+
+
+def _old_boost(docs: list[Hit], bundles: list[str], w: float) -> list[Hit]:
+    """478f16e までの実装（全体をスコアで並べ直す）。差分ファジングの比較元."""
+    from dataclasses import replace
+
+    scaled = [
+        replace(d, score=d.score * (1 + w)) if d.bundle in bundles else d for d in docs
+    ]
+    order = sorted(range(len(scaled)), key=lambda i: (-scaled[i].score, i))
+    return [scaled[i] for i in order]
+
+
+def test_boost_differential_fuzz_and_group_order_property() -> None:
+    import random
+
+    rng = random.Random(20261003)
+    bundles_all = ["references", "dev", "memory"]
+    for _ in range(500):
+        n = rng.randint(0, 12)
+        w = rng.choice([0.5, 1.0, 2.0])
+        target = rng.sample(bundles_all, rng.randint(1, 2))
+        # 同点を作るためスコアは粗い格子から引く
+        raw = [
+            _h(i, rng.choice(bundles_all), f"{i}.md", rng.randint(0, 8) / 8)
+            for i in range(n)
+        ]
+        # 1) 非負・降順の入力（既定 rrf_top3 の形）では旧実装と同じ結果＝v10 の測定は不変
+        desc = sorted(raw, key=lambda d: -d.score)
+        assert boost_by_bundle(desc, target, w) == _old_boost(desc, target, w)
+        # 2) 任意の並び・負を含むスコアでも、各群の相対順位は入力のまま・決定的
+        anyo = [
+            _h(d.chunk_id, d.bundle, d.rel_path, d.score - rng.choice([0.0, 0.5]))
+            for d in raw
+        ]
+        out = boost_by_bundle(anyo, target, w)
+        assert boost_by_bundle(anyo, target, w) == out
+        for inside in (True, False):
+            want = [d.rel_path for d in anyo if (d.bundle in target) == inside]
+            got = [d.rel_path for d in out if (d.bundle in target) == inside]
+            assert got == want
+        before = {d.rel_path: d.score for d in anyo}
+        for d in out:  # 推定内は下がらない・推定外はスコア不変
+            if d.bundle in target:
+                assert d.score >= before[d.rel_path]
+            else:
+                assert d.score == before[d.rel_path]

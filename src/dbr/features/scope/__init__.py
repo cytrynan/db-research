@@ -2,7 +2,12 @@
 
 ④ 全体の証拠と ① 探し物の上位文書が全 bundle 横断で選ばれ、「生活の効率化」に dev/ の技術
 文書が入る問題（v9c）への対処。語彙ルールで始める（埋め込みや LLM で推定しない）。
-固有名詞（商品名・人名）と両義の語（「ツール」「設定」「計画」）は語彙に入れない。
+個人データ側の固有名詞（持ち物の商品名・人名）と両義の語（「ツール」「設定」「計画」）は
+語彙に入れない。技術の名前（Docker・git・Python 等）は実装語として dev に入れる。
+
+既知の限界（受入検証 2026-10-03・D-16 に記載）: 照合は部分一致で大文字小文字を区別する
+（「専門家の」→「家の」、「克服」→「服」、「2つ目が」→「目が」で references に誤推定。
+「python」は当たらない）。語彙は bench の質問を見ながら作った（in-sample）。
 """
 
 from __future__ import annotations
@@ -67,20 +72,47 @@ def guess_bundles(question: str) -> BundleGuess:
     return BundleGuess([b for b, _ in hits], " / ".join(f"{b}←{w}" for b, w in hits))
 
 
+def _lift(score: float, factor: float) -> float:
+    # 負のスコア（cosine・並べ直し器のロジット）に factor を掛けると下がるので割る。
+    # 単調増加・0 で連続＝持ち上げた文書が下がることはない（受入検証 R2）
+    return score * factor if score >= 0 else score / factor
+
+
 def boost_by_bundle(
     docs: list[Hit], bundles: list[str] | None, w: float = DEFAULT_BOOST
 ) -> list[Hit]:
-    """推定 bundle の文書スコアを (1+w) 倍して並べ直す（決定的・同点は元の順位）.
+    """推定 bundle の文書スコアを (1+w) 倍に持ち上げ、推定内・推定外の 2 列を安定マージする.
 
-    bundles が None か w<=0 なら恒等。推定外の文書どうしの相対順位は変えない。
+    bundles が None か w<=0 なら恒等。決定的。入力の並びを順位として扱い、**推定内どうし・
+    推定外どうしの相対順位は入力がスコア降順でなくても変えない**（並べ直し付きモード ×
+    agg=max は別尺度のスコアが連結されるので、全体をスコアで並べ直すと推定外の順位まで
+    壊れた＝受入検証 R2）。2 列の先頭どうしを比べ、持ち上げ後のスコアが大きい方を先に出す
+    （同点は元の順位が上の方）。入力がスコア降順（既定の rrf_top3）なら「持ち上げてから
+    スコア降順・同点は元の順位」と同じ結果になる。
     """
     if not bundles or w <= 0:
         return list(docs)
-    scaled = [
-        replace(d, score=d.score * (1 + w)) if d.bundle in bundles else d for d in docs
+    factor = 1.0 + w
+    target = set(bundles)
+    inside = [
+        (i, replace(d, score=_lift(d.score, factor)))
+        for i, d in enumerate(docs)
+        if d.bundle in target
     ]
-    order = sorted(range(len(scaled)), key=lambda i: (-scaled[i].score, i))
-    return [scaled[i] for i in order]
+    outside = [(i, d) for i, d in enumerate(docs) if d.bundle not in target]
+    out: list[Hit] = []
+    a = b = 0
+    while a < len(inside) and b < len(outside):
+        (ia, da), (ib, db) = inside[a], outside[b]
+        if da.score > db.score or (da.score == db.score and ia < ib):
+            out.append(da)
+            a += 1
+        else:
+            out.append(db)
+            b += 1
+    out.extend(d for _, d in inside[a:])
+    out.extend(d for _, d in outside[b:])
+    return out
 
 
 __all__ = [

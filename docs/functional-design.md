@@ -298,7 +298,7 @@ class Searcher:
 - `embed_ctx_rerank`: 文脈付き埋め込みの候補 `max(rerank_top, k)` 件だけを並べ直す（既定 rerank_top=20・全文検索を混ぜない。2026-09-29）
 - **文書集約**（断片列→文書列）: `max`＝最良断片の順位、`rrf_top3`＝文書ごとの上位 3 断片の Σ1/(60+順位)（**既定・D-14**）、`rrf_all`＝全断片（断片の多い長い文書を持ち上げて崩れる＝v8）
 - **`ask` の既定**: mode=`embed_ctx`・agg=`rrf_top3`（D-14・2026-09-29・recall@5 0.90 / MRR 0.861）。それまでの既定 `hybrid_ctx` は v5 で 0.80 / 0.676
-- **bundle の絞り込み（scope・D-16・2026-09-30）**: 質問の語（閉じた語彙。生活・体・お金・家・仕事 → references／実装・設定 → dev／方針・案件 → memory）から対象 bundle を推定し、既定 `boost`（w=1.0）は推定 bundle の文書スコアを (1+w) 倍して並べ直す。`filter` は推定 bundle だけで検索、`none` は従来。bundle 名が質問に明示されていればそれを優先。v10 で ① 1.00 / 0.883
+- **bundle の絞り込み（scope・D-16・2026-09-30）**: 質問の語（閉じた語彙。生活・体・お金・家・仕事 → references／実装・設定 → dev／方針・案件 → memory）から対象 bundle を推定し、既定 `boost`（w=1.0）は推定 bundle の文書スコアを (1+w) 倍に持ち上げ、推定内・推定外の 2 列を安定マージする（各列の相対順位は入力のまま。負のスコアは (1+w) で割る＝持ち上げた文書が下がらない。スコア降順の入力では「持ち上げてスコア降順」と同じ）。`filter` は推定 bundle だけで検索、`none` は従来。bundle 名が質問に明示されていればそれを優先。v10 で ① 1.00 / 0.883（in-sample。限界は bench-results v10「受入検証」節: 部分一致の誤推定・held-out 未測定・並べ直し付きモードでの効き方は未測定）
 
 ### Counter（F4・② 数える）
 
@@ -340,7 +340,7 @@ class Temporal:
 
 **責務**: 要約階層の生成と参照（P1）。要約は元テキストの `source_hash` を持ち、回答時に同じ関数で再計算して違えば「要約が古い」と WARN する（`dbr summarize --bundle X --check`＝陳腐化ありで exit 6。section レベルは対象外）。検知の範囲: bundle のハッシュは各文書の rel_path＋description だけを覆い、種別・未確認・期限切れの件数の変化は document レベルの changed で捕まえる。「期限切れ（今日時点）」は日付の進行だけで古くなるのでハッシュでは検知しない（要約の作り直しは運用で）
 
-**回答層（2026-09-30 追加）**: 抽出型の回答（bundle 要約の先頭行＋上位文書の document 要約＝証拠）に加え、`--llm <ローカルモデル>` を指定すると**同じ証拠だけを渡してローカル LLM（transformers・CPU・貪欲デコード）が日本語 3〜5 文の回答を書く**（プロンプト v2: 観点ごとにファイル名を 1 つ以上）。回答中のファイル名・数値のうち証拠に無いものを `unsupported_mentions` で機械検出し（ハルシネーションの下界）、bench は 2 回生成して一致（reproducible）と所要秒を記録する。外部 API は使わない（D-13 と同じ境界）。上位文書の選び方は ① の既定と同じ集約 rrf_top3・同じ断片数 AGG_CHUNKS（D-14）。**証拠の bundle は scope（D-16・既定 boost）で推定した bundle に絞る**（bundle 要約も推定側だけ。推定理由を warnings に 1 行）
+**回答層（2026-09-30 追加）**: 抽出型の回答（bundle 要約の先頭行＋上位文書の document 要約＝証拠）に加え、`--llm <ローカルモデル>` を指定すると**同じ証拠だけを渡してローカル LLM（transformers・CPU・貪欲デコード）が日本語 3〜5 文の回答を書く**（プロンプト v2: 観点ごとにファイル名を 1 つ以上）。回答中のファイル名・数値のうち証拠に無いものを `unsupported_mentions` で機械検出し（ハルシネーションの下界）、bench は 2 回生成して一致（reproducible）と所要秒を記録する。外部 API は使わない（D-13 と同じ境界）。上位文書の選び方は ① の既定と同じ集約 rrf_top3・同じ断片数 AGG_CHUNKS（D-14）。**証拠の bundle は scope（D-16・既定 boost）で推定した bundle に絞る**（bundle 要約も推定側だけ。推定理由と「他の bundle は対象外／候補に残す」を warnings に 1 行。語彙外の scope は ValueError）
 
 **インターフェース**:
 ```python

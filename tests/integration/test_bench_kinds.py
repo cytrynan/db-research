@@ -243,3 +243,66 @@ def test_cli_ask_rrf_agg_searches_agg_chunks(
         app, ["ask", "x", "--kind", "find", "--scope", "nope", "--dsn", clean_db]
     )
     assert r.exit_code == 2
+
+
+def _prepare_two_bundles(dsn: str) -> None:
+    run(FIXTURES / "kuroko", "memory", dsn, log=lambda _m: None)
+    run(FIXTURES / "dated", "references", dsn, log=lambda _m: None)
+    fake = get_embedder("fake")
+    for bundle in ("memory", "references"):
+        run_embed(bundle, "ctx", dsn, fake)
+
+
+def test_run_scope_searches_once_per_question(
+    clean_db: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """bench scope は find も overview も質問ごとに全 bundle 1 回＋filter 1 回（受入検証 R4）."""
+    import dbr.features.bench.scope as bs
+
+    _prepare_two_bundles(clean_db)
+    seen: list[object] = []
+    real = bs.search
+
+    def spy(*a: object, **kw: object) -> object:
+        seen.append(kw.get("bundles"))
+        return real(*a, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(bs, "search", spy)
+    doc = "references/decisions-note.md"
+    qs = [
+        Question("Q01", "健康の記録はどこ", "find", (doc,)),
+        Question("Q19", "お金の記録は全体としてどう？", "overview", (doc,)),
+        Question("Q20", "明日の天気は全体としてどう？", "overview", ()),
+    ]
+    res = bs.run_scope(qs, dsn=clean_db, embedder=get_embedder("fake"))
+    # 推定ありの 2 問は [全 bundle, filter]、推定なしの 1 問は [全 bundle] だけ
+    assert seen == [None, ["references"], None, ["references"], None]
+    assert len(res["overview"]) == 5
+    assert all(len(c["per_question"]) == 2 for c in res["overview"])
+    assert res["guesses"]["Q20"]["bundles"] is None
+
+
+def test_cli_ask_boost_keeps_group_order_on_rerank_max(clean_db: str) -> None:
+    """並べ直し × agg=max はスコアの尺度が混ざる。boost は各群の相対順位を変えない（R2）."""
+    _prepare_two_bundles(clean_db)
+    base = [
+        "ask", "睡眠ΩΩ", "--kind", "find", "--mode", "embed_ctx_rerank", "--agg", "max",
+        "--rerank-top", "1", "--reranker", "fake", "--model", "fake", "--k", "10",
+        "--dsn", clean_db, "--json",
+    ]  # fmt: skip
+
+    def hits(extra: list[str]) -> list[dict[str, object]]:
+        r = CliRunner().invoke(app, [*base, *extra])
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output.strip().splitlines()[-1])
+        return list(data["hits"])
+
+    none = hits(["--scope", "none"])
+    boost = hits([])  # 既定＝boost（睡眠 → references）
+    mem = [float(str(h["score"])) for h in none if str(h["doc"]).startswith("memory/")]
+    assert mem != sorted(mem, reverse=True)  # 前提: スコア降順でない列が来ている
+    for prefix in ("memory/", "references/"):
+        assert [h["doc"] for h in boost if str(h["doc"]).startswith(prefix)] == [
+            h["doc"] for h in none if str(h["doc"]).startswith(prefix)
+        ]
+    assert {str(h["doc"]) for h in boost} == {str(h["doc"]) for h in none}
