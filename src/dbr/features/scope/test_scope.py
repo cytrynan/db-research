@@ -49,7 +49,7 @@ def test_boost_is_deterministic_identity_and_order_preserving() -> None:
     assert SCOPES == ("none", "filter", "boost")
 
 
-def test_boost_keeps_group_order_on_unsorted_input_and_never_lowers() -> None:
+def test_boost_keeps_group_order_on_unsorted_input_and_never_lowers_score() -> None:
     """受入検証 R2: 並べ直し × agg=max はスコア降順でない列が来る。各群の相対順位は不変."""
     docs = [
         _h(1, "dev", "P.md", 0.2),
@@ -70,6 +70,14 @@ def test_boost_keeps_group_order_on_unsorted_input_and_never_lowers() -> None:
     assert [d.rel_path for d in out] == ["A.md", "B.md", "C.md"]
     assert out[1].score == -0.01
     assert boost_by_bundle([], ["references"], 1.0) == []
+    # 既知の限界（解消確認 1-c）: 非降順では推定内の「順位」は下がりうる（スコアは下がらない）
+    lim = [
+        _h(1, "dev", "O1.md", 0.3),
+        _h(2, "references", "I1.md", 0.05),
+        _h(3, "dev", "O2.md", 0.85),
+    ]
+    out = boost_by_bundle(lim, ["references"], 1.0)
+    assert [d.rel_path for d in out] == ["O1.md", "O2.md", "I1.md"]
 
 
 def _old_boost(docs: list[Hit], bundles: list[str], w: float) -> list[Hit]:
@@ -112,7 +120,7 @@ def test_boost_differential_fuzz_and_group_order_property() -> None:
             got = [d.rel_path for d in out if (d.bundle in target) == inside]
             assert got == want
         before = {d.rel_path: d.score for d in anyo}
-        for d in out:  # 推定内は下がらない・推定外はスコア不変
+        for d in out:  # 推定内のスコアは下がらない・推定外はスコア不変
             if d.bundle in target:
                 assert d.score >= before[d.rel_path]
             else:

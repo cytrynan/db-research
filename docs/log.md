@@ -12,7 +12,7 @@
 
 ## 2026-10-03
 
-* **Update**: [検索品質の測定結果](bench-results.md) — v10 に「受入検証で分かった限界と訂正」節（in-sample・外れた時の被害は未測定・部分一致の誤推定・boost の実装修正・bench の検索回数）。発見 1 の裏づけの無い原因記述を訂正、格子の中の最小と明記 (kuroko/claude-fable-5-1)
+* **Update**: [検索品質の測定結果](bench-results.md) — v10 に「受入検証で分かった限界と訂正」節（in-sample・外れた時の被害は未測定・部分一致の誤推定・boost の実装修正・bench の検索回数）。発見 1 の裏づけの無い原因記述を訂正、格子の中の最小と明記。修正後の再測定 v10b（git f9eff51・clean）が v10 と全セル一致 (kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-16 の理由欄に受入検証の追記（in-sample・格子・外れた時の被害は未測定） (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — scope の boost を「2 列の安定マージ・負のスコアは割る」に、overview の warnings と scope 検査を追記 (kuroko/claude-fable-5-1)
 
