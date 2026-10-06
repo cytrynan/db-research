@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from dbr.shared.embed.offline import ONLINE_HINT, apply_offline_default
 from dbr.shared.llm import LLMUnavailable
 
 
@@ -12,6 +13,7 @@ class LocalCausalLM:
 
     def __init__(self, name: str, *, device: str = "cpu") -> None:
         self.name = name
+        apply_offline_default()  # huggingface_hub の import 前
         try:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -26,7 +28,9 @@ class LocalCausalLM:
                 device
             )
         except Exception as exc:  # モデル未取得（オフライン）など
-            raise LLMUnavailable(f"{name} を読み込めません: {exc}") from exc
+            raise LLMUnavailable(
+                f"{name} を読み込めません: {exc}。{ONLINE_HINT}"
+            ) from exc
         self._model.eval()
         self._torch = torch
 

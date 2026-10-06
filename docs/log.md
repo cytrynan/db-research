@@ -10,6 +10,15 @@
 * **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
 -->
 
+## 2026-10-06
+* **Update**: [機能設計書](functional-design.md) — Serve 節のクライアントを実装に合わせて訂正（health の待ちは 2 秒・閉じたポートでは 2 秒かかる・`ensure_daemon` は子が先に終わったら待たない・`/sync` は走行中の同期を待つ＝409 を返さない。受入検証 2 巡目の指摘 B） (kuroko/claude-fable-5-1)
+* **Update**: [測定結果](bench-results.md) — v11b（受入検証の回収後・276 文書・2,918 断片で既定経路を再測定: find 1.00/1.00/0.883・順位は v11 と全問一致・count 4/4・asof 同一）と、応答時間の表に「修正後（CLI の起動を軽くした）」列を追加（count 0.46〜0.51 秒 × 5・find/asof/overview 0.56〜0.71 秒・同期直後の 7 回は 2 秒台） (kuroko/claude-fable-5-1)
+* **Update**: [決定台帳](decisions.md) — D-17（不明 → 探し物のフォールバック）・D-18（常駐と HF オフライン既定・応答時間の実測）・D-19（`dbr sync` への一本化・陳腐化による再構築）を追加 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — Classifier 節を D-17 の形に書き換え。Ask（3 入口の共通部）・Serve（F8）・Sync（F9）・MCP（F10）の節と構成図の常駐経路を追加 (kuroko/claude-fable-5-1)
+* **Update**: [アーキテクチャ設計書](architecture.md) — 対応表に ask / serve / sync / mcp_server を追加、常駐プロセスと状態の置き場・外部通信なしの節、応答時間と sync の実測 (kuroko/claude-fable-5-1)
+* **Update**: [プロダクト要求定義書](product-requirements.md) — F2 の受け入れ条件を「判定器は不明を返す・ask は探し物として検索し推定を明示」に（D-17） (kuroko/claude-fable-5-1)
+* **Update**: [測定結果](bench-results.md) — v11: 取り込みを 7 bundle（269 文書・2,834 断片）に拡大した後の既定経路の再測定（find 1.00/0.883・count 4/4・asof 4/4＝v10 と同値）と応答時間の before/after (kuroko/claude-fable-5-1)
+
 ## 2026-10-03
 
 * **Update**: [検索品質の測定結果](bench-results.md) — v10 に「受入検証で分かった限界と訂正」節（in-sample・外れた時の被害は未測定・部分一致の誤推定・boost の実装修正・bench の検索回数）。発見 1 の裏づけの無い原因記述を訂正、格子の中の最小と明記。修正後の再測定 v10b（git f9eff51・clean）が v10 と全セル一致 (kuroko/claude-fable-5-1)

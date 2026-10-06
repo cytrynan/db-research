@@ -11,26 +11,27 @@
 
 from __future__ import annotations
 
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
+# 例外は psycopg 不要の層（dsn.py）に置き、ここから再エクスポートする（既存の import 経路を保つ）。
+# psycopg.conninfo は各関数の中で import する（モジュール読み込みを軽く保つ。CLI の起動用）
+from dbr.shared.db.dsn import LoopbackViolation
+
+__all__ = [
+    "LOOPBACK_ADDRS",
+    "LOOPBACK_HOSTS",
+    "LoopbackViolation",
+    "assert_loopback",
+    "effective_conninfo",
+    "host_of",
+]
 
 LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 LOOPBACK_ADDRS = frozenset({"127.0.0.1", "::1"})
 
 
-class LoopbackViolation(Exception):
-    """DSN の接続先がループバック以外だった（host / hostaddr / service）."""
-
-    def __init__(self, host: str | None, *, reason: str = "host") -> None:
-        self.host = host
-        self.reason = reason
-        super().__init__(
-            f"拒否: 個人データの DB はローカル接続のみ（{reason}={host!r}）。"
-            " localhost / 127.0.0.1 / ::1 を指定してください"
-        )
-
-
 def host_of(dsn: str) -> str | None:
     """DSN（URI または key=value 形式）からホスト名を取り出す。無ければ None."""
+    from psycopg.conninfo import conninfo_to_dict
+
     info = conninfo_to_dict(dsn)
     host = info.get("host")
     return str(host) if host is not None else None
@@ -44,6 +45,8 @@ def assert_loopback(dsn: str) -> None:
     - `hostaddr` があれば同じ許可集合で検査する（`host` より優先されるため）。
     - `service` は接続先を外部ファイルで差し替えられるので拒否する。
     """
+    from psycopg.conninfo import conninfo_to_dict
+
     info = conninfo_to_dict(dsn)
     if "service" in info:
         raise LoopbackViolation(str(info["service"]), reason="service")
@@ -62,6 +65,8 @@ def effective_conninfo(dsn: str) -> str:
     - `hostaddr` を明示して `PGHOSTADDR` 等の環境変数を無効化する
     - `connect_timeout` 既定 5 秒
     """
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
     assert_loopback(dsn)
     info = conninfo_to_dict(dsn)
     host = str(info["host"]).lower()

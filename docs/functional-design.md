@@ -14,8 +14,9 @@ status: draft
 ```mermaid
 graph TB
     K[K / くろこ]
-    CLI[CLI: dbr]
-    CLS[型判定 classify]
+    CLI[CLI: dbr ask ／ MCP: dbr mcp]
+    SRV[常駐 dbr serve\n127.0.0.1:47821・モデル保持・30 分ごとに sync]
+    CLS[型判定 classify\n不明は find へ倒す（D-17）]
     SRCH[① 探し物 search]
     CNT[② 数える count]
     TMP[③ 時点 asof]
@@ -27,7 +28,10 @@ graph TB
     BENCH[測定 bench]
 
     K --> CLI
-    CLI --> CLS
+    CLI -->|HTTP・居なければ起こす| SRV
+    SRV --> CLS
+    SRV -->|sync| ING
+    CLI -.->|--no-daemon| CLS
     CLS -->|①| SRCH
     CLS -->|②| CNT
     CLS -->|③| TMP
@@ -273,7 +277,7 @@ class RuleClassifier(Classifier): ...      # 語彙ルール（何件・いく�
 class LLMClassifier(Classifier): ...       # 4型の定義と例を渡して1語で返させる（外部 API 利用時のみ）
 ```
 
-**設計上の決め**: 判定不能は `unknown` を返し、**`find` に倒さない**（PRD F2）。CLI は `unknown` のとき候補2つを提示して止まる。
+**設計上の決め**: 判定器は判定不能を `unknown` として返す（判定器の中では倒さない・PRD F2）。**倒すのは `ask` 層**（`features/ask.resolve_kind`）: `--kind auto` かつ `unknown` のとき `find` として検索し、`reason` を「既知の語彙に当たらない → 探し物として検索（推定）」、`kind_fallback: true` にして推定であることを明示する（D-17・2026-10-06。それ以前は候補 2 つを提示して exit 2 で止めていた）。`--kind` を明示したときはフォールバックしない。
 
 ### Search（F3・① 探し物）
 
@@ -349,6 +353,51 @@ class Summarizer:
 class Overview:
     def answer(self, question: str, *, bundle: str) -> OverviewAnswer: ...   # 根拠にした Summary の id を返す
 ```
+
+### Ask（計算本体・3 入口の共通部）
+
+**責務**: 型判定 → 該当コンポーネント → 回答 dict。CLI（単発）・常駐（F8）・MCP（F10）の 3 入口が**同じ `answer()`** を呼ぶ（既定の計算経路＝測定経路を 1 か所に）。
+
+```python
+@dataclass(frozen=True)
+class AskOptions: kind, mode, agg, rerank_top, scope, boost_w, k, model, reranker, at, llm
+class AskError(Exception): code  # 2 引数不正 / 3 ループバック違反 / 5 モデル・埋め込み不在
+def answer(question, opts, *, dsn, embedder_for, reranker_for, llm_for) -> dict   # 従来の --json と同じ dict ＋ kind_fallback / notes
+def format_text(out) -> str        # stdout の文面（常駐経由でも単発でも同じ）
+```
+
+`embedder_for` 等は名前 → 実装の供給者。CLI は毎回作り、常駐は 1 回読んだものを返す。
+
+### Serve（F8・常駐）
+
+**責務**: 埋め込みモデルを 1 回だけ読んだプロセスを常駐させ、ループバック HTTP で ask / sync に答える（D-18）。
+
+- bind は **127.0.0.1 固定**（既定ポート 47821・環境変数 `DBR_PORT`）。経路は `GET /health` / `POST /ask` / `POST /sync` / `POST /shutdown` の 4 つだけ
+- モデル（埋め込み・並べ直し・LLM）は名前ごとに 1 個保持し、推論は Lock で直列化
+- 起動直後に 1 回、以後 `--sync-interval` 分（既定 30・0 で無効）ごとに Sync（F9）を別スレッドで実行。`/health` に最後の同期（時刻・秒・変更の有無・エラー）
+- クライアント（`serve/client.py`）: `health`（**2 秒**で不応答＝居ない。起動直後の同期中は応答が遅れるので 0.3 秒では誤判定した＝2026-10-06 実測。閉じたポートへは Windows ではタイムアウトまで待つので、常駐が居ないときの `dbr serve` / `dbr sync` は 2 秒遅れる）・`ask_remote`・`ensure_daemon`（`python -m dbr.cli serve` を切り離して起こし health を待つ・既定 90 秒。起こした子が先に終わったら待たずに諦める）・`stop_daemon`
+- `POST /sync` は走行中の同期があれば**終わるのを待ってから**走る（409 を返さない）。定期スレッド側は重なった周期を飛ばす
+- `dbr ask` の経路: `--no-daemon` / `DBR_NO_DAEMON=1` / `--dsn` 明示 → 単発。それ以外は常駐（居なければ起こす。起こせなければ WARN を出して単発に倒す）
+- ログ `~/.dbr/serve.log` は経路名・件数・時刻だけ（質問文・本文は書かない）。認証は持たない（単一利用者の PC。ローカルプロセスは正本も直接読める）
+
+### Sync（F9・同期）
+
+**責務**: 正本フォルダの変更・新規・削除を DB に反映する（D-19）。
+
+```python
+BUNDLES_ORDER = ("references", "dev", "memory", "stock", "tax", "scout", "experiments")
+def bundle_roots() -> dict[str, Path]      # 既定パス。DBR_ROOT_<BUNDLE> で上書き
+def prune(dsn, bundle, root) -> int        # DB にあって正本に無い document を削除（root 不在は ValueError＝誤って全削除しない）
+def run_sync(dsn, embedder, *, bundles=None, roots=None, log=print) -> SyncReport
+```
+
+- bundle ごとに ingest → prune → embed(plain) → embed(ctx) → （`changed` または要約が陳腐化していれば）facts → summarize。「正本にある」の定義は ingest と同じ関数（`iter_markdown` / `is_excluded`）
+- document の削除は FK CASCADE で chunk / chunk_embedding / fact に伝わる。summary は FK を持たないので prune が document・section 階層の行を消し、bundle 階層は summarize が作り直す
+- `rebuilt_reason`（`changed` / `stale_summaries` / None）で、何を理由に fact と summary を作り直したかを報告に残す
+
+### MCP（F10・エージェントの入口）
+
+**責務**: Claude Code のセッションから `ask` / `count` / `sync` / `health` を呼べる stdio の MCP サーバー（`dbr mcp`）。常駐（F8）へ中継するだけで、torch 等は import しない（セッションごとに 1 プロセス起きるため）。登録は `claude mcp add --scope user dbr -- uv run --project <repo> dbr mcp`（K が 1 回）。
 
 ### Bench（F7・測定）
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from dbr.shared.embed import EmbedderUnavailable
+from dbr.shared.embed.offline import ONLINE_HINT, apply_offline_default
 
 
 class LocalE5:
@@ -12,6 +13,7 @@ class LocalE5:
 
     def __init__(self, name: str, *, device: str = "cpu") -> None:
         self.name = name
+        apply_offline_default()  # huggingface_hub の import 前（環境変数は import 時に読まれる）
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:  # pragma: no cover - 環境依存
@@ -19,7 +21,9 @@ class LocalE5:
         try:
             self._model: Any = SentenceTransformer(name, device=device)
         except Exception as exc:  # モデル未取得（オフライン）など
-            raise EmbedderUnavailable(f"{name} を読み込めません: {exc}") from exc
+            raise EmbedderUnavailable(
+                f"{name} を読み込めません: {exc}。{ONLINE_HINT}"
+            ) from exc
         # sentence-transformers 6.x で名前が変わった（旧名は FutureWarning）
         getter = getattr(self._model, "get_embedding_dimension", None)
         dims = getter() if getter else self._model.get_sentence_embedding_dimension()

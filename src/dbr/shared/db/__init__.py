@@ -2,30 +2,27 @@
 
 from __future__ import annotations
 
-import os
+from typing import TYPE_CHECKING
 
-import psycopg
-from psycopg.rows import dict_row
+from dbr.shared.db.dsn import ENV_DSN, LoopbackViolation, resolve_dsn
+from dbr.shared.db.loopback import assert_loopback, effective_conninfo
 
-from dbr.shared.db.loopback import (
-    LoopbackViolation,
-    assert_loopback,
-    effective_conninfo,
-)
+if TYPE_CHECKING:
+    import psycopg
 
-__all__ = ["LoopbackViolation", "assert_loopback", "connect", "resolve_dsn"]
-
-ENV_DSN = "DBR_DSN"
-
-
-def resolve_dsn(explicit: str | None = None) -> str:
-    """--dsn 引数 → 環境変数 DBR_DSN の順。どちらも無ければ例外."""
-    dsn = explicit or os.environ.get(ENV_DSN)
-    if not dsn:
-        raise ValueError(f"DSN が未指定です（--dsn か環境変数 {ENV_DSN}）")
-    return dsn
+__all__ = [
+    "ENV_DSN",
+    "LoopbackViolation",
+    "assert_loopback",
+    "connect",
+    "resolve_dsn",
+]
 
 
 def connect(dsn: str) -> psycopg.Connection[dict[str, object]]:
     """ループバック検査を通してから接続する（検査は接続前・環境変数の影響を遮断）."""
+    # psycopg（約 0.3 秒）は接続する時に初めて読む。CLI の起動（常駐経由の ask）を軽く保つため
+    import psycopg
+    from psycopg.rows import dict_row
+
     return psycopg.connect(effective_conninfo(dsn), row_factory=dict_row)

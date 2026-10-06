@@ -1,0 +1,165 @@
+{
+  "agg": "rrf_top3",
+  "boost_w": 1.0,
+  "date": "2026-10-06",
+  "ef_search": 40,
+  "git_sha": "0f209a2-dirty",
+  "kind": "find",
+  "model": "intfloat/multilingual-e5-small",
+  "modes": {
+    "embed_ctx": {
+      "mrr": 0.8833333333333334,
+      "per_question": [
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q01",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/workout.md",
+            "references/preferences.md",
+            "references/university.md",
+            "references/devices.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q02",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/log.md",
+            "experiments/memsyco-k/RESULTS-AUDIT.md",
+            "experiments/memsyco-k/RESULTS-L2.md",
+            "experiments/rv-2608/RESULTS.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md",
+            "references/home.md"
+          ],
+          "id": "Q03",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/log.md",
+            "references/home.md",
+            "references/devices.md",
+            "references/INDEX.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q04",
+          "rank": 2,
+          "top5": [
+            "references/fuyou.md",
+            "references/work.md",
+            "references/log.md",
+            "tax/gyomu-itaku-to-ukeoi.md",
+            "references/career-roadmap.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/work.md"
+          ],
+          "id": "Q05",
+          "rank": 1,
+          "top5": [
+            "references/work.md",
+            "references/career-roadmap.md",
+            "references/profile.md",
+            "references/fuyou.md",
+            "references/log.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/health.md"
+          ],
+          "id": "Q06",
+          "rank": 1,
+          "top5": [
+            "references/health.md",
+            "references/log.md",
+            "references/home.md",
+            "references/workout.md",
+            "experiments/codex-role-fitness/RESULTS-R6E.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/preferences.md"
+          ],
+          "id": "Q07",
+          "rank": 1,
+          "top5": [
+            "references/preferences.md",
+            "references/fuyou.md",
+            "dev/agent-orchestration-log.md",
+            "references/university.md",
+            "dev/recording.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/tools.md"
+          ],
+          "id": "Q08",
+          "rank": 3,
+          "top5": [
+            "references/company-local-llm.md",
+            "references/home.md",
+            "references/tools.md",
+            "scout/surveys/2026-08-12-sakana-ai.md",
+            "dev/slack-trigger-headless-claude.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/career-roadmap.md"
+          ],
+          "id": "Q09",
+          "rank": 1,
+          "top5": [
+            "references/career-roadmap.md",
+            "references/fuyou.md",
+            "references/work.md",
+            "references/university.md",
+            "references/learning.md"
+          ]
+        },
+        {
+          "expected": [
+            "references/fuyou.md"
+          ],
+          "id": "Q10",
+          "rank": 1,
+          "top5": [
+            "references/fuyou.md",
+            "references/profile.md",
+            "tax/nenshu-kabe-seido.md",
+            "references/log.md",
+            "references/work.md"
+          ]
+        }
+      ],
+      "recall@20": 1.0,
+      "recall@5": 1.0
+    }
+  },
+  "question_count": 10,
+  "rerank_top": null,
+  "reranker": null,
+  "scope": "boost",
+  "skipped": [],
+  "sudachi_dict": "sudachidict_core==20260723.1"
+}

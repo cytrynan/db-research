@@ -1,0 +1,245 @@
+{
+  "all_stable": true,
+  "all_views_ok": true,
+  "date": "2026-10-06",
+  "git_sha": "0f209a2-dirty",
+  "kind": "count",
+  "per_question": [
+    {
+      "expected_view": "v_by_bundle",
+      "id": "Q11",
+      "rows": [
+        {
+          "bundle": "dev",
+          "chunks": 969,
+          "docs": 59
+        },
+        {
+          "bundle": "experiments",
+          "chunks": 1114,
+          "docs": 82
+        },
+        {
+          "bundle": "memory",
+          "chunks": 156,
+          "docs": 77
+        },
+        {
+          "bundle": "references",
+          "chunks": 223,
+          "docs": 16
+        },
+        {
+          "bundle": "scout",
+          "chunks": 195,
+          "docs": 23
+        },
+        {
+          "bundle": "stock",
+          "chunks": 227,
+          "docs": 15
+        },
+        {
+          "bundle": "tax",
+          "chunks": 34,
+          "docs": 4
+        }
+      ],
+      "stable": true,
+      "view": "v_by_bundle",
+      "view_ok": true
+    },
+    {
+      "expected_view": "v_verified",
+      "id": "Q12",
+      "rows": [
+        {
+          "bundle": "dev",
+          "n": 7
+        },
+        {
+          "bundle": "experiments",
+          "n": 1
+        },
+        {
+          "bundle": "memory",
+          "n": 20
+        },
+        {
+          "bundle": "references",
+          "n": 1
+        },
+        {
+          "bundle": "scout",
+          "n": 2
+        },
+        {
+          "bundle": "tax",
+          "n": 2
+        }
+      ],
+      "stable": true,
+      "view": "v_verified",
+      "view_ok": true
+    },
+    {
+      "expected_view": "v_stale",
+      "id": "Q13",
+      "rows": [
+        {
+          "bundle": "memory",
+          "n": 1
+        }
+      ],
+      "stable": true,
+      "view": "v_stale",
+      "view_ok": true
+    },
+    {
+      "expected_view": "v_by_type",
+      "id": "Q14",
+      "rows": [
+        {
+          "bundle": "dev",
+          "n": 7,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "dev",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "dev",
+          "n": 51,
+          "type": "Tech Note"
+        },
+        {
+          "bundle": "experiments",
+          "n": 3,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "experiments",
+          "n": 1,
+          "type": "Experiment Backlog"
+        },
+        {
+          "bundle": "experiments",
+          "n": 76,
+          "type": "Experiment Record"
+        },
+        {
+          "bundle": "experiments",
+          "n": 1,
+          "type": "Experiment Records Convention"
+        },
+        {
+          "bundle": "experiments",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "memory",
+          "n": 3,
+          "type": "Decision"
+        },
+        {
+          "bundle": "memory",
+          "n": 17,
+          "type": "feedback"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "memory",
+          "n": 49,
+          "type": "project"
+        },
+        {
+          "bundle": "memory",
+          "n": 3,
+          "type": "reference"
+        },
+        {
+          "bundle": "memory",
+          "n": 2,
+          "type": "user"
+        },
+        {
+          "bundle": "memory",
+          "n": 1,
+          "type": null
+        },
+        {
+          "bundle": "references",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "references",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "references",
+          "n": 14,
+          "type": "Life Data"
+        },
+        {
+          "bundle": "scout",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "scout",
+          "n": 1,
+          "type": "Index"
+        },
+        {
+          "bundle": "scout",
+          "n": 21,
+          "type": "Scout Note"
+        },
+        {
+          "bundle": "stock",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "stock",
+          "n": 14,
+          "type": "Domain Knowledge"
+        },
+        {
+          "bundle": "tax",
+          "n": 1,
+          "type": "Change Log"
+        },
+        {
+          "bundle": "tax",
+          "n": 2,
+          "type": "Domain Knowledge"
+        },
+        {
+          "bundle": "tax",
+          "n": 1,
+          "type": "Index"
+        }
+      ],
+      "stable": true,
+      "view": "v_by_type",
+      "view_ok": true
+    }
+  ],
+  "question_count": 4,
+  "repeats": 3
+}

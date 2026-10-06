@@ -51,8 +51,14 @@ def ask_view(name: str, dsn: str) -> list[dict[str, Any]]:
 
 
 def guess_view(question: str) -> str | None:
-    """② の質問 → ビュー名。語彙の固定対応だけ（LLM に SQL を書かせない）."""
-    q = question.lower()
+    """② の質問 → ビュー名。語彙の固定対応だけ（LLM に SQL を書かせない）.
+
+    ビュー名そのもの（`v_by_bundle` 等）が来たら完全一致で先に返す（MCP の count ツールは
+    検査済みのビュー名を渡す。受入検証 2026-10-06: `v_by_bundle` だけ語彙に当たらず None だった）。
+    """
+    q = question.strip().lower()
+    if q in VIEWS:
+        return q
     # 否定形を先に判定する（"unverified" は "verified" を部分文字列に含む）
     if "unverified" in q or "未確認" in q:
         return "v_unverified"

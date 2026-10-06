@@ -59,9 +59,20 @@ status: draft
 | 全体（F6） | `src/dbr/features/overview/` | `__init__.py` | 要約階層の生成・参照 |
 | 測定（F7） | `src/dbr/features/bench/` | `__init__.py` | 質問セット実行・指標出力 |
 | 共有 | `src/dbr/shared/db/` | `__init__.py` | 接続（ループバック検査込み）・マイグレーション runner |
-| 共有 | `src/dbr/shared/embed/` | `__init__.py` | `Embedder` プロトコルと実装2種（ingest と search が使う） |
+| 共有 | `src/dbr/shared/embed/` | `__init__.py` | `Embedder` プロトコルと実装2種（ingest と search が使う）。`offline.py` が HF Hub への問い合わせを既定で切る（D-18） |
+| 計算本体 | `src/dbr/features/ask/` | `__init__.py` | `answer()`（型判定 → 各スライス）と `format_text()`。CLI・常駐・MCP の 3 入口が同じ関数を呼ぶ。不明 → find のフォールバック（D-17） |
+| 常駐（F8） | `src/dbr/features/serve/` | `__init__.py` / `client.py` | 127.0.0.1 固定の HTTP（/health /ask /sync /shutdown）・モデル保持・sync スレッド／薄いクライアントと自動起動 |
+| 同期（F9） | `src/dbr/features/sync/` | `__init__.py` | bundle 台帳・prune・ingest → embed → facts → summarize の差分実行（D-19） |
+| 入口（F10） | `src/dbr/features/mcp_server/` | `__init__.py` | stdio MCP（ask / count / sync / health）。常駐へ中継するだけ |
 
-スライス間の呼び出しは入口経由のみ。`ask` コマンドは `classify` → 該当スライスの入口、の順に呼ぶ薄い配線（`src/dbr/cli.py`）。
+スライス間の呼び出しは入口経由のみ。`ask` コマンドは `features/ask.answer()` を呼ぶ薄い配線（`src/dbr/cli.py`）。既定では常駐へ投げ、`--no-daemon` / `DBR_NO_DAEMON=1` / `--dsn` 明示のとき単発で同じ `answer()` を呼ぶ。
+
+### 常駐プロセス（D-18）と状態の置き場
+
+- 常駐は **1 台に 1 プロセス**（既定ポート 47821・`DBR_PORT`）。二重起動は bind 失敗で止まる（`allow_reuse_address=False`）
+- 状態はプロセス内だけ（モデルのキャッシュ・最後の同期）。再起動で消えてよい。ディスクに書くのは `~/.dbr/serve.log`（経路名・件数・時刻のみ）
+- 自動起動は `python -m dbr.cli serve`（uv の仮想環境の python）を `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` で切り離す（Windows）。CLI が終わっても生き残り、ログオフで終わる。常用の自動起動（Windows タスクスケジューラ）は未登録＝要るなら別単位
+- 外部通信は無し: モデルはキャッシュ（`~/.cache/huggingface`）から読み、`HF_HUB_OFFLINE=1` を既定にする。モデル未取得のときだけ `DBR_HF_ONLINE=1` で 1 回取得
 
 ## 方式の選定（研究の中心・検索品質 D-11）
 
@@ -115,6 +126,8 @@ status: draft
 | `ask`（②） | 1秒以内 | 同上 |
 | `ingest` 全件 | 5分以内（埋め込みはローカルモデル） | 同上 |
 | `bench` 全方式 | 30分以内 | 同上 |
+
+実測（2026-10-06・2,834 断片・K の PC・常駐あり・5 回連続）: ① find 0.94〜1.03 秒 / ③ asof 1.02〜1.11 / ④ overview 1.05〜1.25 / ② count 0.87〜1.08（5 回中 1 回が 1 秒超。`uv run` と Python の起動が約 0.9 秒を占める）。常駐なしの単発は 20〜29 秒（モデル読み込み）。初回の自動起動込みは 24.5 秒。7 bundle の初回 `sync` は 450 秒（埋め込み 2,042 断片×2 variant＝目標 5 分を超える。2 回目以降は差分だけで、無変更なら 2.3 秒）。
 
 ### リソース使用量
 

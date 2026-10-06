@@ -5,14 +5,29 @@ K の個人記録を **質問の型（探し物／数える／時点／全体）
 
 > このリポジトリは [claude-code-template](https://github.com/6dorg/claude-code-template) から作成。以下はテンプレートの利用手順（参考）。
 
-## 使い方（研究の土台・2026-09-29 時点）
+## 使い方（常用・2026-10-06 時点）
 
 ```bash
 uv sync
 cp .env.example .env            # DBR_DSN=postgresql://dbr:dbr@127.0.0.1:5432/dbr（localhost は使わない）
 docker compose up -d --wait     # PostgreSQL 16 + pgvector を 127.0.0.1:5432 にだけ公開
 uv run dbr migrate              # migrations/ を番号順に適用（再実行は 0 件）
-uv run dbr ingest ~/.agents/knowledge/dev --bundle dev   # OKF フォルダを取り込み（冪等）
+uv run dbr sync                 # 7 bundle（references/dev/memory/stock/tax/scout/experiments）の変更・新規・削除を反映（取り込み→埋め込み→fact→summary・冪等）
+uv run dbr ask "Codex の起動で PATH の罠は何だった？"   # 型を推定して答える。語彙に当たらなければ探し物として検索（推定と明示・D-17）
+                                # 初回は常駐（dbr serve・127.0.0.1:47821）を自動で起こす（約 25 秒）。以後は 1 秒前後で返る（D-18）
+uv run dbr serve --stop         # 常駐を止める。--no-daemon か DBR_NO_DAEMON=1 で単発計算（従来どおり・モデル読み込み込みで 20 秒前後）
+uv run dbr mcp                  # エージェントの入口（stdio MCP: ask / count / sync / health。常駐へ中継）
+```
+
+- **Claude Code への登録（K が 1 回・承認後）**: `claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`
+- 常駐は起動直後と 30 分ごとに `sync` を走らせる（`dbr serve --sync-interval 0` で無効）。状態は `curl http://127.0.0.1:47821/health`、ログは `~/.dbr/serve.log`（件数と時刻だけ）
+- Hugging Face Hub への問い合わせは既定で切ってある（`HF_HUB_OFFLINE=1`）。モデル未取得のときだけ `DBR_HF_ONLINE=1` を付けて 1 回取得する
+- 正本フォルダの既定は `~/.claude/references`・`~/.claude/projects/C--Users-meer0/memory`・`~/.agents/knowledge/<bundle>`。環境変数 `DBR_ROOT_<BUNDLE>`（例 `DBR_ROOT_MEMORY`）で上書き
+
+### 研究用（個別コマンド）
+
+```bash
+uv run dbr ingest ~/.agents/knowledge/dev --bundle dev   # OKF フォルダを取り込み（冪等）。通常は sync で足りる
 uv run dbr count v_by_bundle    # ② 数える: 定義済みビュー（v_by_bundle / v_by_type / v_unverified / v_stale）
 uv run dbr embed --bundle dev --variant plain   # 埋め込み（ローカル e5-small・CPU・冪等）。--variant ctx で文脈付き
 uv run dbr ask "メガネの度数どこに書いた？"     # 型判定 → find なら検索（--mode fts|embed|hybrid|hybrid_ctx）

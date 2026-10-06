@@ -1,38 +1,42 @@
-# RESUME — 次のセッションが最初に読むファイル（2026-10-03 更新）
+# RESUME — 次のセッションが最初に読むファイル（2026-10-06 更新）
 
 > 目的: 会話の文脈が切れても、ここと `docs/decisions.md`・`.steering/*/tasklist.md` だけで再開できるようにする。
 
 ## いまどこか
-- **完了した作業単位（8つ・すべて issue クローズ・push 済み）**
+- **完了した作業単位（9 つ・すべて issue クローズ）**
   1. `20260929-foundation-ingest` — Docker PostgreSQL（localhost 限定）・OKF 取り込み（冪等・private.md 二重拒否）・count ビュー
   2. `20260929-search-classify` — Sudachi→tsvector（OR）・ローカル埋め込み（e5-small）・RRF・型判定（20/20）・bench find
   3. `20260929-rerank-tuning` — 並べ直し（cross-encoder）・重み付き RRF・HNSW 強制・sweep/hnsw bench
-  4. `20260929-asof-overview` — fact 表（バイテンポラル・explicit/dated_text/inferred）・summary 表（抽出型 3 段）・`dbr ask` の asof（断片→文書→全体で絞る）/overview・bench count|asof|overview。受入検証（readonly-reviewer/Opus）の指摘 D1〜D5 を回収済み（0010 で `fact_uniq` に md5(value)）。未回収 3 件は次の単位で回収
-  5. `20260929-review-leftovers` — summary の陳腐化検知（`stale_summaries`・overview の WARN・`dbr summarize --check`＝exit 6）、recorded_at の規則（generated.at 無しは valid_from）、`v_verified`（0011・Q12）、`scripts/gate.sh`／`gate.ps1`（故障注入で exit 1 を確認）
-  6. `20260929-find-tuning2` — `embed_ctx_rerank`（埋め込み候補だけを並べ直し）・文書集約 `aggregate_by_document`（max / rrf_all / rrf_top3）・`bench --kind tune`・`ask --agg`。**D-14: 既定を embed_ctx＋rrf_top3 に**（並べ直しは既定にしない）
-  7. `20260930-overview-llm` — ④ にローカル LLM の回答層（`shared/llm`・Qwen2.5-1.5B-Instruct・CPU）。同じ証拠だけを渡し、根拠外の言及を機械検出・2 回一致を記録（`bench --kind overview --llm`・`ask --llm`）。**D-15: 配線したが既定は抽出型のまま**。K 採点用に `docs/overview-answers.md` を抽出型／LLM の 2 列に
-  8. `20260930-bundle-scope` — 質問の語から bundle を推定（`features/scope`・閉じた語彙）し、① と ④ の証拠を boost で優先。**D-16: 既定 scope=boost w=1.0**（① 1.00/0.883・④ の期待文書 2/4・1/1）。`bench --kind scope`。受入検証（readonly-reviewer/Opus）は条件付き受入可 → 条件 3 点を `f9eff51` で回収（boost を 2 列の安定マージに・bench の既定 w を定数参照に・bench scope の検索回数）。修正後の再測定 v10b は v10 と全セル一致
-- **確定した測定値**: `docs/bench-results.md`（v4〜v7）。① find 10 問の最良は **embed_ctx＋rrf_top3＋bundle の boost recall@5 1.00 / MRR 0.883**（v10・D-16。boost 無しは 0.90 / 0.861＝v8。全文検索を混ぜると下がる。cross-encoder の並べ直しは Q08 だけに効き Q02/Q06 を落とす。HNSW は 2,154 行では速度差なし）。② count 4/4 stable。③ asof **4/4**（v7・2 回一致）。④ overview は **K 採点済み（2026-09-30）: 抽出型 5/5・LLM 4/3 ＝ 抽出型で足りる**。LLM 層（Qwen2.5-1.5B・根拠外 0・2 回一致・37〜198 秒／回答）は配線を残して保留。
-- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）に references（16）＋dev（53）＋memory（76）＝145 文書・1,230 断片、埋め込み plain/ctx、fact 346 行（dated_text 295・inferred 51）、summary 3 段。テストは別 DB `dbr_test`。
-- **訂正済みの誤記**: v6 で「INDEX と work.md の日付不整合」と書いたのは timestamptz の UTC 表示の誤読（work.md に 2026-08-10 は無い）。実データの「発見」は原本を grep してから書く。
+  4. `20260929-asof-overview` — fact 表（バイテンポラル）・summary 表（抽出型 3 段）・`dbr ask` の asof / overview・bench count|asof|overview
+  5. `20260929-review-leftovers` — summary の陳腐化検知・recorded_at の規則・`v_verified`・`scripts/gate.sh`／`gate.ps1`
+  6. `20260929-find-tuning2` — `embed_ctx_rerank`・文書集約（max / rrf_all / rrf_top3）・`bench --kind tune`。**D-14: 既定を embed_ctx＋rrf_top3 に**
+  7. `20260930-overview-llm` — ④ にローカル LLM の回答層（Qwen2.5-1.5B・CPU）。**D-15: 配線したが既定は抽出型のまま**（K 採点 抽出型 5/5・LLM 4/3）
+  8. `20260930-bundle-scope` — 質問の語から bundle を推定し ① と ④ の証拠を boost。**D-16: 既定 scope=boost w=1.0**（① 1.00/0.883）
+  9. `20261006-daily-use` — **常用化**: 取り込みを 7 bundle に拡大（`dbr sync`・D-19）、不明 → 探し物のフォールバック（D-17）、常駐 `dbr serve` と HF オフライン既定（D-18）、エージェントの入口 `dbr mcp`。計算本体を `features/ask` に抽出し CLI・常駐・MCP が同じ関数を呼ぶ
+- **確定した測定値**: `docs/bench-results.md`（v4〜v11）。① find 10 問は **embed_ctx＋rrf_top3＋boost で recall@5 1.00 / MRR 0.883**（v10＝v11。取り込みを 145→269 文書に広げても不変。**in-sample**＝語彙は質問を見ながら作った）。② count 4/4 stable。③ asof 4/4。④ overview は K 採点済み（抽出型 5/5・LLM 4/3＝抽出型で足りる。LLM 層は保留）。
+- **応答時間（2026-10-06・常駐あり・5 回連続）**: count 0.87〜1.08 秒 / find 0.94〜1.03 / asof 1.02〜1.11 / overview 1.05〜1.25（うち `uv run`＋Python 起動が約 0.9 秒）。初回の自動起動込み 24.5 秒。常駐なしは 20〜29 秒。
+- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）: 7 bundle・269 文書・2,834 断片・埋め込み plain/ctx 5,668・fact 546・summary 3,110。`experiments` の 6 ファイルはフロントマターの YAML 不正で未取り込み（WARN。一覧は `.steering/20261006-daily-use/tasklist.md` 振り返り）。テストは別 DB `dbr_test`（同期係の `dbr_test_sync` も残っている・消してよい）。
+- **訂正済みの誤記**: v6 で「INDEX と work.md の日付不整合」と書いたのは timestamptz の UTC 表示の誤読。実データの「発見」は原本を grep してから書く。
 
 ## 次にやること（推奨順）
-1. **質問セットの拡張（K 判断）**: 20 問はすべて references 向けで、scope の「技術語 → dev」「方針語 → memory」の枝と、推定が外れた時の filter/boost の差が測れない。dev/memory 向けの find・overview を各 5 問ほど足す案。**v10 の 1.00/0.883 は in-sample**（語彙は bench の質問を見ながら作った）なので、語彙の手直し（部分一致の誤推定: 「専門家の」「克服」「2つ目が」）は held-out の質問を足してから
-   - 質問を足さずに今すぐ測れる案: **推定をわざと外す反実仮想**（既存の find 10 問で推定 bundle を dev に差し替え、filter と boost の recall@5/20 の落ち方を比べる）。D-16 の「外れても他 bundle が残る」を数値にできる
-2. ④ の LLM 層は保留（K 採点 抽出型 5/5・LLM 4/3）。証拠が良くなった v10 の回答で再採点するかは K 次第。モデルの大型化（3B）はその後
-3. `valid_to` の自動推定（同 subject の後続事実で閉じる）を、誤閉じ率を測ってから入れる
+1. **K の作業 1 つ**: Claude Code に MCP を登録する（`claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`・README 参照）。登録後、くろこのセッションで `ask` ツールが見えることを確認
+2. **質問セットの拡張（K 判断）**: 20 問はすべて references 向け。**使い始めて「推定で探した質問」（`kind_fallback: true`）と外れた質問を held-out として溜め**、dev / memory / stock / tax 向けの find・overview を各 5 問ほど足す。語彙（LEXICON）の手直しはその後
+3. **experiments の 6 ファイルのフロントマター修正**（正本側・`~/.agents/knowledge/experiments`）→ 直せば次の sync で入る
+4. ④ の LLM 層の再採点（K 次第）／`valid_to` の自動推定（誤閉じ率を測ってから）／Windows タスクスケジューラでの常駐自動起動（要るなら）
 
 ## 再開の手順
 ```bash
 # PC 再起動後は Docker Desktop が落ちている（docker ps が npipe エラー）→ 先に Docker Desktop を起動。起動直後に落ちる時は docker-desktop-recover スキル
 docker compose up -d --wait && uv run dbr migrate          # 再実行は 0 件
 bash scripts/gate.sh                                        # ruff → mypy → pytest（db 含む・80%）。K は pwsh -File scripts/gate.ps1
-uv run dbr count v_by_bundle                                 # 実データが残っているか
+uv run dbr ask "未確認の記録は何件？"                        # 常駐が居なければ自動で起こす（約 25 秒）→ 以後 1 秒前後
+uv run dbr sync                                             # 正本の変更を反映（常駐が居ればそちらで実行。無変更なら数秒）
 ```
-埋め込みを作り直す必要は無い（`dbr embed` は未生成分だけ計算）。`private.md` は絶対に取り込まない（走査除外＋トリガー）。
+`private.md` は絶対に取り込まない（走査除外＋トリガー）。常駐を止めるのは `uv run dbr serve --stop`。
 
 ## 守ること（決定台帳 `docs/decisions.md` の要点）
-- 個人データは手元の PostgreSQL のみ・外部ホスティング禁止（D-5）。埋め込み・並べ直しもローカルモデルのみ（D-13）
+- 個人データは手元の PostgreSQL のみ・外部ホスティング禁止（D-5）。埋め込み・並べ直しもローカルモデルのみ（D-13）。HF Hub への問い合わせも既定で切る（D-18）
 - 正本は OKF Markdown。DB は捨てて作り直せる派生（D-9）。マイグレーションの既存ファイルは編集しない（D-3）
-- ゲートは `bash scripts/gate.sh`（pipefail 込み・4 段）を通してから commit。手で `&&` を並べない（並べて事故 3 回）
-- commit / push・受入検証（別コンテキスト。Codex 不可なら readonly-reviewer/Opus）・振り返りを毎単位で
+- 既定の計算経路は `features/ask.answer()` 1 か所。CLI・常駐・MCP で分岐させない（測定経路＝既定経路）
+- ゲートは `bash scripts/gate.sh`（pipefail 込み・4 段）を通してから commit。commit は `bash scripts/gate-commit.sh <msg-file>` だけ（直打ちはフックが deny）
+- commit / push・受入検証（Codex。不可なら readonly-reviewer/Opus）・振り返りを毎単位で

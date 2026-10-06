@@ -14,17 +14,19 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
-from dbr.features.search import Hit
+from dbr.features.scope.defaults import DEFAULT_BOOST, DEFAULT_SCOPE
+
+if TYPE_CHECKING:  # Hit は型注釈だけ。実行時に search（→ psycopg）を引き込まない
+    from dbr.features.search import Hit
 
 ScopeMode = Literal["none", "filter", "boost"]
 SCOPES: tuple[str, ...] = get_args(ScopeMode)
 # D-16（2026-09-30・v10）: none 0.90/0.861 → filter・boost(0.5〜2.0) はすべて 1.00/0.883（Q08 9→3 位）、
 # ④ の期待文書は Q19 1/4→2/4・Q20 0/1→1/1。同点なので**柔らかい boost** を既定にし、w は Q19 の
-# 上位 5 が全部 references になる最小の 1.0。技術語→dev の枝は bench に質問が無く未測定
-DEFAULT_SCOPE: str = "boost"
-DEFAULT_BOOST: float = 1.0
+# 上位 5 が全部 references になる最小の 1.0。技術語→dev の枝は bench に質問が無く未測定。
+# 値そのものは defaults.py（CLI が search/psycopg を読まずに既定値だけ取れるように分けた）
 
 # bundle → 語彙（先勝ちでなく全部当てて和集合）
 LEXICON: tuple[tuple[str, re.Pattern[str]], ...] = (

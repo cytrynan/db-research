@@ -15,6 +15,14 @@ from dbr.features.count import VIEWS, UnknownAggregate, guess_view, sql_for
         ("type が Life Data のファイルは何件？", "v_by_type"),
         ("references のファイルは全部で何件？", "v_by_bundle"),
         ("今日の天気は？", None),
+        # ビュー名そのもの（MCP の count ツール経由）。受入検証 2026-10-06 で v_by_bundle だけ None だった
+        ("v_by_bundle", "v_by_bundle"),
+        ("v_by_type", "v_by_type"),
+        ("v_unverified", "v_unverified"),
+        ("v_verified", "v_verified"),
+        ("v_stale", "v_stale"),
+        (" V_BY_BUNDLE ", "v_by_bundle"),  # 前後空白・大文字も同じ
+        ("v_nope", None),
     ],
 )
 def test_guess_view(question: str, view: str | None) -> None:

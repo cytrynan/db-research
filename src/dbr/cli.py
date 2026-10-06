@@ -13,9 +13,10 @@ from typing import Annotated, Any
 
 import typer
 
-from dbr.features.scope import DEFAULT_BOOST, DEFAULT_SCOPE
-from dbr.shared.db import LoopbackViolation, connect, resolve_dsn
-from dbr.shared.db.migrate import migrate as run_migrations
+# 起動時に psycopg / 検索モジュールを読まない（常駐経由の ask は urllib だけで済む。
+# 2026-10-06 実測: この 2 行で import 時間 約 0.35 秒）。DB を触るコマンドは中で import する
+from dbr.features.scope.defaults import DEFAULT_BOOST, DEFAULT_SCOPE
+from dbr.shared.db.dsn import LoopbackViolation, resolve_dsn
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -47,6 +48,9 @@ def _exit_on_loopback(exc: LoopbackViolation) -> typer.Exit:
 @app.command()
 def migrate(dsn: DsnOpt = None, as_json: JsonOpt = False) -> None:
     """migrations/ を番号順に適用する (適用済みは飛ばす)."""
+    from dbr.shared.db import connect
+    from dbr.shared.db.migrate import migrate as run_migrations
+
     try:
         conn = connect(resolve_dsn(dsn))
     except LoopbackViolation as exc:
@@ -223,7 +227,27 @@ def _llm_or_exit(name: str) -> Any:
         raise typer.Exit(code=5) from None
 
 
-ASK_KINDS = ("auto", "find", "count", "asof", "overview")
+NoDaemonOpt = Annotated[
+    bool,
+    typer.Option(
+        "--no-daemon",
+        help="常駐（dbr serve）を使わず単発で計算する（環境変数 DBR_NO_DAEMON=1 と同じ）",
+    ),
+]
+PortOpt = Annotated[
+    int | None,
+    typer.Option("--port", help="常駐のポート。省略時は環境変数 DBR_PORT か 47821"),
+]
+
+
+def _port_or_exit(port: int | None) -> int:
+    from dbr.features.serve import port_from_env
+
+    try:
+        return port if port is not None else port_from_env()
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from None
 
 
 @app.command()
@@ -249,238 +273,190 @@ def ask(
         str | None, typer.Option("--at", help="時点（YYYY-MM-DD / YYYY-MM）。asof 用")
     ] = None,
     llm: LlmOpt = "none",
+    no_daemon: NoDaemonOpt = False,
+    port: PortOpt = None,
     dsn: DsnOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
-    """型判定 → 該当する道具で答える（find / count / asof / overview）."""
-    from dbr.features.asof import parse_at_option
-    from dbr.features.classify import RuleClassifier
-    from dbr.features.count import VIEWS, ask_view
-    from dbr.features.scope import SCOPES, boost_by_bundle, guess_bundles
-    from dbr.features.search import (
-        AGG_CHUNKS,
-        AGGS,
-        MODES,
-        NoEmbeddings,
-        aggregate_by_document,
-        search,
+    """型判定 → 該当する道具で答える（find / count / asof / overview）.
+
+    語彙に当たらない質問は ① 探し物として検索し、推定であることを明示する（D-17）。
+    計算本体は features/ask。既定では常駐（dbr serve）に投げ、居なければ起こす（D-18）。
+    --dsn を明示したときは常駐を使わない（常駐は自分の DSN で動いているため）。
+    """
+    from dbr.features.ask import AskError, AskOptions, answer, format_text, stderr_notes
+    from dbr.features.serve.client import ask_remote, daemon_disabled, ensure_daemon
+
+    opts = AskOptions(
+        kind=kind,
+        mode=mode,
+        agg=agg,
+        rerank_top=rerank_top,
+        scope=scope,
+        boost_w=boost_w,
+        k=k,
+        model=model,
+        reranker=reranker,
+        at=at,
+        llm=llm,
     )
-
-    # オプションの検査は型に関係なく先にやる（--kind bogus が overview に落ちない・
-    # --at の書式は asof 以外でも exit 2。受入検証 D1）
-    if kind not in ASK_KINDS:
-        typer.echo(f"--kind は {' | '.join(ASK_KINDS)}", err=True)
-        raise typer.Exit(code=2)
-    if scope not in SCOPES:
-        typer.echo(f"--scope は {SCOPES} のいずれか", err=True)
-        raise typer.Exit(code=2)
-    at_dt = parse_at_option(at) if at is not None else None
-    if at is not None and at_dt is None:
-        typer.echo(
-            "--at は YYYY-MM-DD か YYYY-MM に全体一致（例 2026-08-15 / 2026-08）",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-    c = RuleClassifier().classify(question)
-    resolved = c.kind if kind == "auto" else kind
-    out: dict[str, Any] = {"kind": resolved, "reason": c.reason}
-    if llm != "none" and resolved != "overview":
-        typer.echo(
-            f"WARN: --llm は overview だけで使う（{resolved} では無視）", err=True
-        )
-    if resolved == "unknown":
-        typer.echo(
-            "型を判定できません。--kind find か --kind count を指定してください",
-            err=True,
-        )
-        raise typer.Exit(code=2)
-    if resolved == "find":
-        if mode not in MODES:
-            typer.echo(f"--mode は {MODES} のいずれか", err=True)
-            raise typer.Exit(code=2)
-        if agg not in AGGS:
-            typer.echo(f"--agg は {AGGS} のいずれか", err=True)
-            raise typer.Exit(code=2)
-        emb = None if mode == "fts" else _embedder_or_exit(model)
-        rr = _reranker_or_exit(reranker) if mode.endswith("_rerank") else None
-        # 集約 rrf_* は下位断片の和も見るので bench と同じ断片数（AGG_CHUNKS）で
-        # 検索する（受入検証 R4(a): 25 断片では測定と順位が食い違った）。max は k*5
-        n_chunks = k * 5 if agg == "max" else max(AGG_CHUNKS, k)
-        guess = guess_bundles(question) if scope != "none" else None
-        try:
-            hits = aggregate_by_document(
-                search(
-                    question,
-                    mode=mode,  # type: ignore[arg-type]
-                    dsn=resolve_dsn(dsn),
-                    k=n_chunks,
-                    embedder=emb,
-                    reranker=rr,
-                    rerank_top=rerank_top,
-                    bundles=guess.bundles if (guess and scope == "filter") else None,
-                ),
-                agg,
-            )
-            if guess and scope == "boost":
-                hits = boost_by_bundle(hits, guess.bundles, boost_w)
-            hits = hits[:k]
-        except NoEmbeddings as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(code=5) from None
-        except LoopbackViolation as exc:
-            raise _exit_on_loopback(exc) from None
-        out["hits"] = [
-            {
-                "doc": h.doc_key,
-                "heading": h.heading_path,
-                "score": h.score,
-                "source": h.source,
-            }
-            for h in hits
-        ]
-        if as_json:
-            typer.echo(json.dumps(out, ensure_ascii=False))
-            return
-        scope_note = f" / scope={scope}（{guess.reason}）" if guess else ""
-        typer.echo(f"[{resolved}] {c.reason} / mode={mode} / agg={agg}{scope_note}")
-        for i, h in enumerate(hits, start=1):
-            typer.echo(
-                f"{i:>2}. {h.doc_key}  §{h.heading_path or '-'}  "
-                f"({h.source}, {h.score:.4f})"
-            )
-        return
-    if resolved == "count":
-        view = _guess_view(question)
-        if view is None:
-            typer.echo(
-                f"どの集計か決められません。定義済み: {', '.join(sorted(VIEWS))}",
-                err=True,
-            )
-            raise typer.Exit(code=2)
-        rows = ask_view(view, resolve_dsn(dsn))
-        out.update({"view": view, "rows": rows})
-        if as_json:
-            typer.echo(json.dumps(out, ensure_ascii=False, default=str))
-            return
-        typer.echo(f"[{resolved}] {c.reason} / 定義={view}")
-        for r in rows:
-            typer.echo("  " + "  ".join(f"{k2}={v}" for k2, v in r.items()))
-        return
-    if resolved == "asof":
-        from dbr.features.asof import answer_asof
-
-        try:
-            # ① 探し物で文書を絞ってから時間で絞る。無ければ全文書 → 履歴で補う
-            asof_ans = answer_asof(
-                question,
-                dsn=resolve_dsn(dsn),
-                embedder=_embedder_or_exit(model),
-                at=at_dt,
-                k=k,
-            )
-        except LoopbackViolation as exc:
-            raise _exit_on_loopback(exc) from None
-        facts = asof_ans.hits
-        at_dt = asof_ans.at
-        out["at"] = at_dt.date().isoformat() if at_dt else None
-        out["candidate_docs"] = asof_ans.docs
-        out["scope"] = asof_ans.scope
-        out["n_candidate_chunks"] = len(asof_ans.chunks)
-        out["fallback_to_history"] = asof_ans.fallback_to_history
-        out["facts"] = [
-            {
-                "date": f.valid_from.date().isoformat(),
-                "until": f.valid_to.date().isoformat() if f.valid_to else None,
-                "doc": f.doc_key,
-                "subject": f.subject,
-                "excerpt": f.value[:120],
-                "source": f.valid_source,
-            }
-            for f in facts
-        ]
-        if as_json:
-            typer.echo(json.dumps(out, ensure_ascii=False))
-            return
-        head = f"時点 {out['at']} の事実" if at_dt else "履歴（関連度順）"
-        if asof_ans.fallback_to_history:
-            head += "（その時点の記録なし → 関連する記録を履歴から・関連度順）"
-        if asof_ans.scope == "chunks":
-            scope = f"断片を絞った（質問に近い {len(asof_ans.chunks)} 断片）"
-        elif asof_ans.scope == "docs":
-            scope = f"文書を絞った: {', '.join(asof_ans.docs)}"
-        else:
-            scope = "全文書"
-        typer.echo(f"[{resolved}] {c.reason} / {head} / {scope}")
-        if not facts:
-            typer.echo("  該当する記録なし")
-        for f in facts:
-            until = f" 〜 {f.valid_to.date().isoformat()}" if f.valid_to else ""
-            flag = "（暫定）" if f.valid_source == "inferred" else ""
-            typer.echo(
-                f"  {f.valid_from.date().isoformat()}{until}{flag}  {f.doc_key}\n"
-                f"      {f.value[:120]}"
-            )
-        return
-    # overview
-    from dbr.features.overview import answer as overview_answer
-    from dbr.features.overview import narrate
-
-    emb_ov = _embedder_or_exit(model)
-    llm_obj = _llm_or_exit(llm) if llm != "none" else None
+    use_daemon = not (no_daemon or daemon_disabled() or dsn is not None)
+    out: dict[str, Any] | None = None
     try:
-        ov = overview_answer(
-            question,
-            dsn=resolve_dsn(dsn),
-            embedder=emb_ov,
-            scope=scope,
-            boost_w=boost_w,
-        )
-    except LoopbackViolation as exc:
-        raise _exit_on_loopback(exc) from None
-    nar = narrate(question, ov, llm_obj) if llm_obj is not None else None
-    out.update(
-        {
-            "bundles": ov.bundles,
-            "bundle_summaries": ov.bundle_summaries,
-            "doc_summaries": ov.doc_summaries,
-            "evidence_ids": ov.evidence_ids,
-            "warnings": ov.warnings,
-            "narrative": (
-                {
-                    "model": nar.model,
-                    "text": nar.text,
-                    "unsupported": nar.unsupported,
-                    "seconds": nar.seconds,
-                }
-                if nar
-                else None
-            ),
-        }
-    )
+        if use_daemon:
+            p = _port_or_exit(port)
+            if ensure_daemon(p):
+                out = ask_remote(question, opts, port=p)
+            else:
+                typer.echo(
+                    f"WARN: 常駐を {p} 番で起こせなかったので単発で計算します"
+                    "（~/.dbr/serve.log を確認）",
+                    err=True,
+                )
+        if out is None:
+            from dbr.shared.embed import get_embedder
+            from dbr.shared.llm import get_llm
+            from dbr.shared.rerank import get_reranker
+
+            out = answer(
+                question,
+                opts,
+                dsn=resolve_dsn(dsn),
+                embedder_for=get_embedder,
+                reranker_for=get_reranker,
+                llm_for=get_llm,
+            )
+    except AskError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=exc.code) from None
+    for note in stderr_notes(out):
+        typer.echo(note, err=True)
     if as_json:
         typer.echo(json.dumps(out, ensure_ascii=False, default=str))
         return
-    typer.echo(f"[{resolved}] {c.reason} / 対象 bundle: {', '.join(ov.bundles)}")
-    for b in ov.bundle_summaries:
-        typer.echo(f"\n■ {b['bundle']}（summary#{b['id']}）\n{b['text']}")
-    if ov.doc_summaries:
-        typer.echo("\n■ 質問に近い文書（上位）")
-        for d in ov.doc_summaries:
-            typer.echo(
-                f"- [{d['doc']}]（summary#{d['id']}）\n  "
-                + d["text"].replace("\n", "\n  ")
-            )
-    if nar is not None:
-        typer.echo(f"\n■ LLM の回答（{nar.model}・{nar.seconds} 秒）\n{nar.text}")
-        typer.echo("根拠外の言及: " + (", ".join(nar.unsupported) or "なし"))
-    for w in ov.warnings:
-        typer.echo(f"WARN: {w}", err=True)
+    typer.echo(format_text(out))
 
 
-def _guess_view(question: str) -> str | None:
-    from dbr.features.count import guess_view
+@app.command()
+def serve(
+    port: PortOpt = None,
+    sync_interval: Annotated[
+        int,
+        typer.Option(
+            "--sync-interval", help="同期の間隔（分）。起動直後に 1 回、0 で無効"
+        ),
+    ] = 30,
+    stop: Annotated[
+        bool, typer.Option("--stop", help="動いている常駐を止める")
+    ] = False,
+    dsn: DsnOpt = None,
+) -> None:
+    """常駐サーバー（127.0.0.1 のみ）。埋め込みモデルを 1 回読み、ask / sync に答える（D-18）."""
+    from dbr.features.serve import DEFAULT_SYNC_INTERVAL_MIN
+    from dbr.features.serve import serve as run_serve
+    from dbr.features.serve.client import health, stop_daemon
 
-    return guess_view(question)
+    p = _port_or_exit(port)
+    if stop:
+        typer.echo("停止しました" if stop_daemon(p) else f"{p} 番に常駐はいません")
+        return
+    if health(p) is not None:
+        typer.echo(f"{p} 番で既に動いています", err=True)
+        raise typer.Exit(code=1)
+    if sync_interval < 0:
+        typer.echo("--sync-interval は 0 以上", err=True)
+        raise typer.Exit(code=2)
+    try:
+        resolved = resolve_dsn(dsn)
+        from dbr.shared.db import assert_loopback
+
+        assert_loopback(resolved)  # 起動時に検査（接続は最初の質問で）
+    except LoopbackViolation as exc:
+        raise _exit_on_loopback(exc) from None
+    _ = DEFAULT_SYNC_INTERVAL_MIN
+    from dbr.shared.embed import EmbedderUnavailable
+
+    try:
+        run_serve(p, resolved, sync_interval_min=sync_interval)
+    except (
+        EmbedderUnavailable
+    ) as exc:  # 起動時のモデル読み込み失敗も単発 ask と同じ exit 5
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=5) from None
+
+
+@app.command()
+def sync(
+    bundle: Annotated[
+        list[str] | None,
+        typer.Option("--bundle", help="対象 bundle（複数可）。省略で全 7 bundle"),
+    ] = None,
+    model: Annotated[str, typer.Option("--model")] = "intfloat/multilingual-e5-small",
+    no_daemon: NoDaemonOpt = False,
+    port: PortOpt = None,
+    dsn: DsnOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """正本フォルダの変更・新規・削除を DB に反映（取り込み → 埋め込み → fact → summary・冪等・D-19）.
+
+    常駐が動いていて --bundle 指定が無ければ常駐に任せる（同時実行を避ける）。
+    """
+    from dbr.features.ingest import BUNDLES, PersonalDataRejected
+    from dbr.features.serve.client import daemon_disabled, health, sync_remote
+    from dbr.features.sync import run_sync
+
+    if bundle:
+        bad = [b for b in bundle if b not in BUNDLES]
+        if bad:
+            typer.echo(f"--bundle は {sorted(BUNDLES)} のいずれか: {bad}", err=True)
+            raise typer.Exit(code=2)
+    use_daemon = not (no_daemon or daemon_disabled() or dsn is not None or bundle)
+    if use_daemon:
+        p = _port_or_exit(port)
+        if health(p) is not None:
+            report = sync_remote(p)
+            _print_sync(report, as_json)
+            return
+    try:
+        rep = run_sync(
+            resolve_dsn(dsn),
+            _embedder_or_exit(model),
+            bundles=bundle or None,
+            log=lambda m: typer.echo(m, err=True),
+        )
+    except LoopbackViolation as exc:
+        raise _exit_on_loopback(exc) from None
+    except PersonalDataRejected as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=4) from None
+    _print_sync(rep.to_dict(), as_json)
+
+
+def _print_sync(report: dict[str, Any], as_json: bool) -> None:
+    if as_json:
+        typer.echo(json.dumps(report, ensure_ascii=False, default=str))
+        return
+    for b in report.get("bundles", []):
+        if b.get("skipped_missing_root"):
+            typer.echo(f"{b['bundle']}: skip（正本フォルダなし {b['root']}）")
+            continue
+        typer.echo(
+            f"{b['bundle']}: 新規 {b['inserted']} / 更新 {b['updated']} / "
+            f"削除 {b['pruned']} / 不変 {b['unchanged']} / 埋め込み "
+            f"{b['embedded_plain']}+{b['embedded_ctx']}"
+            + (f" / 再構築 {b['rebuilt_reason']}" if b.get("rebuilt_reason") else "")
+        )
+    typer.echo(
+        f"変更 {'あり' if report.get('changed') else 'なし'}（{report.get('seconds')} 秒）"
+    )
+
+
+@app.command()
+def mcp() -> None:
+    """エージェントの入口: stdio の MCP サーバー（ask / count / sync / health。常駐へ中継）."""
+    from dbr.features.mcp_server import run_stdio
+
+    run_stdio()
 
 
 @app.command()
