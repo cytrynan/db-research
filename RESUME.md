@@ -19,7 +19,7 @@
 - **訂正済みの誤記**: v6 で「INDEX と work.md の日付不整合」と書いたのは timestamptz の UTC 表示の誤読。実データの「発見」は原本を grep してから書く。
 
 ## 次にやること（推奨順）
-1. **K の作業 1 つ**: Claude Code に MCP を登録する（`claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`・README 参照）。登録後、くろこのセッションで `ask` ツールが見えることを確認
+1. ~~K の作業: MCP の登録~~ → **2026-10-06 登録済み**（`claude mcp add --scope user dbr -- uv run --project C:/Users/meer0/dev/db-research dbr mcp`・Status Connected）。新しい Claude Code セッションから `dbr` の `ask` / `count` / `sync` / `health` が呼べる。くろこの日常の参照（`~/.claude/CLAUDE.md` §2 の INDEX.md 経由）をこの入口に切り替えるかは K 判断＝規範の変更
 2. **質問セットの拡張（K 判断）**: 20 問はすべて references 向け。**使い始めて「推定で探した質問」（`kind_fallback: true`）と外れた質問を held-out として溜め**、dev / memory / stock / tax 向けの find・overview を各 5 問ほど足す。語彙（LEXICON）の手直しはその後
 3. **R3 の判断（K）**: 温まった状態では count 0.5 秒だが、同期直後の最初の数回が 2 秒台（原因未特定。候補: 常駐プロセスの CPU 競合・autovacuum・ファイルキャッシュ）。基準を「温まった状態で」に直すか、原因を潰す単位を切るか
 4. ④ の LLM 層の再採点（K 次第）／`valid_to` の自動推定（誤閉じ率を測ってから）／Windows タスクスケジューラでの常駐自動起動（要るなら）
