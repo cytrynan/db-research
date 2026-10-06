@@ -85,19 +85,22 @@ def test_ensure_daemon_spawns_then_waits_until_health_ok() -> None:
 
 
 class _Exited:
-    """起こした子がすぐ終わった（モデル未取得・ポート使用中 等）を模す."""
+    """起こした子がすぐ終わったことを模す（code は exit code）."""
+
+    def __init__(self, code: int) -> None:
+        self.code = code
 
     def poll(self) -> int:
-        return 5
+        return self.code
 
 
-def test_ensure_daemon_stops_waiting_when_child_exits() -> None:
+def test_ensure_daemon_stops_waiting_when_child_exits_with_model_missing() -> None:
     # 2 巡目の観察 4: 以前は子の終了を見ずに 90 秒待っていた
     now, sleep = _clock()
     ok = ensure_daemon(
         4,
         start_timeout=90.0,
-        spawn=lambda _p: _Exited(),
+        spawn=lambda _p: _Exited(5),
         probe=lambda _p: None,
         sleep=sleep,
         now=now,
@@ -105,6 +108,43 @@ def test_ensure_daemon_stops_waiting_when_child_exits() -> None:
     )
     assert ok is False
     assert now() == pytest.approx(0.5)  # 1 回待っただけで諦めた
+
+
+def test_ensure_daemon_keeps_waiting_when_port_was_taken_by_another_session() -> None:
+    # 別セッションが同時に起こした常駐が bind 済み（自分の子は exit 6）→ そちらが答えるまで待つ
+    probes = iter([None, None, None, {"status": "ok"}])
+    now, sleep = _clock()
+    ok = ensure_daemon(
+        5,
+        start_timeout=90.0,
+        spawn=lambda _p: _Exited(6),
+        probe=lambda _p: next(probes),
+        sleep=sleep,
+        now=now,
+        poll_s=0.5,
+    )
+    assert ok is True
+    assert now() == pytest.approx(1.5)
+
+
+def test_ensure_daemon_stops_on_other_failures_too() -> None:
+    # DSN 未設定（exit 1）・ループバック違反（exit 3）は待たない（追加レビューの観察 A）
+    for code in (1, 3):
+        now, sleep = _clock()
+
+        def spawn(_p: int, c: int = code) -> _Exited:
+            return _Exited(c)
+
+        ok = ensure_daemon(
+            6,
+            start_timeout=90.0,
+            spawn=spawn,
+            probe=lambda _p: None,
+            sleep=sleep,
+            now=now,
+            poll_s=0.5,
+        )
+        assert ok is False and now() == pytest.approx(0.5), code
 
 
 def test_ensure_daemon_gives_up_after_timeout() -> None:

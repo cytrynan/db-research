@@ -11,6 +11,8 @@
 -->
 
 ## 2026-10-06
+* **Update**: [アーキテクチャ設計書](architecture.md)・[決定台帳](decisions.md) — 応答時間の実測を受入検証の回収後の値に追随（count 0.46〜0.51 秒 × 5・同期直後の数回は 2 秒台で原因未特定）。評価係の指摘①「回収後に旧値のまま commit した」の回収 (kuroko/claude-fable-5-1)
+* **Update**: [測定結果](bench-results.md) — v11c: commit `ede32a0`（dirty なし）で find / count / asof を再測定し v11b と一致（「-dirty の JSON は確定版で測り直す」の実施） (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — Serve 節のクライアントを実装に合わせて訂正（health の待ちは 2 秒・閉じたポートでは 2 秒かかる・`ensure_daemon` は子が先に終わったら待たない・`/sync` は走行中の同期を待つ＝409 を返さない。受入検証 2 巡目の指摘 B） (kuroko/claude-fable-5-1)
 * **Update**: [測定結果](bench-results.md) — v11b（受入検証の回収後・276 文書・2,918 断片で既定経路を再測定: find 1.00/1.00/0.883・順位は v11 と全問一致・count 4/4・asof 同一）と、応答時間の表に「修正後（CLI の起動を軽くした）」列を追加（count 0.46〜0.51 秒 × 5・find/asof/overview 0.56〜0.71 秒・同期直後の 7 回は 2 秒台） (kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-17（不明 → 探し物のフォールバック）・D-18（常駐と HF オフライン既定・応答時間の実測）・D-19（`dbr sync` への一本化・陳腐化による再構築）を追加 (kuroko/claude-fable-5-1)

@@ -344,7 +344,7 @@ all_stable=True / all_views_ok=True（repeats=3）。Q11 `v_by_bundle` の行数
 
 ### v11b（2026-10-06・受入検証の回収後＝experiments の YAML 不正 6 ファイルを正本側で直して再同期。276 文書・2,918 断片）
 
-既定経路（embed_ctx＋rrf_top3＋scope=boost）を同じ 10 問で再測定: **recall@5 1.00 / recall@20 1.00 / MRR 0.883・全問の順位が v11 と一致**（`bench/results/20261006-find-v11b.json`。順位表の diff なし）。② count は 4/4（行の中身は 7 bundle の現在値に更新: dev 59・experiments 82）、③ asof は v11 と同一（`20261006-asof-v11b.json`）。7 文書増えても既定経路の順位は動かなかった。
+既定経路（embed_ctx＋rrf_top3＋scope=boost）を同じ 10 問で再測定: **recall@5 1.00 / recall@20 1.00 / MRR 0.883・全問の順位が v11 と一致**（`bench/results/20261006-find-v11b.json`。順位表の diff なし）。② count は 4/4（行の中身は 7 bundle の現在値に更新: dev 59・experiments 82）、③ asof は v11 と同一（`20261006-asof-v11b.json`）。7 文書増えても既定経路の順位は動かなかった。commit `ede32a0` の後に同じ 3 種を **v11c**（`git ede32a0`・dirty なし）として再測定し、find の順位表・count 4/4 stable・asof 4/4 が v11b と一致（`bench/results/20261006-{find,count,asof}-v11c.json`。「-dirty の JSON は確定版で測り直す」の実施）。
 
 ### 応答時間（PRD 非機能要件 ①③④ 3 秒以内・② 1 秒以内）
 

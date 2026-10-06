@@ -32,6 +32,22 @@ def test_serve_exits_5_with_hint_when_model_missing(
     assert "DBR_HF_ONLINE=1" in r.output
 
 
+def test_serve_exits_6_when_port_is_in_use(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 別セッションの常駐が先に bind した → exit 6（client.ensure_daemon はこの番号だけ待つ）
+    import errno
+
+    def taken(*_a: Any, **_k: Any) -> int:
+        raise OSError(errno.EADDRINUSE, "address already in use")
+
+    monkeypatch.setattr(serve_mod, "serve", taken)
+    monkeypatch.setattr(client_mod, "health", lambda *_a, **_k: None)
+    r = CliRunner().invoke(
+        app, ["serve", "--port", "1", "--sync-interval", "0", "--dsn", LOOPBACK_DSN]
+    )
+    assert r.exit_code == 6, r.output
+    assert "使用中" in r.output
+
+
 def test_serve_refuses_non_loopback_dsn_before_loading_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

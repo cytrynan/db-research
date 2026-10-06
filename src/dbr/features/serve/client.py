@@ -34,6 +34,10 @@ from dbr.features.serve import (
 HEALTH_TIMEOUT = 2.0
 ASK_TIMEOUT = 300.0  # overview の LLM は 1 回答 37〜198 秒（v9）
 START_TIMEOUT = 90.0
+EXIT_MODEL_UNAVAILABLE = (
+    5  # cli.serve が EmbedderUnavailable で返す exit code（cli.py と揃える）
+)
+EXIT_PORT_IN_USE = 6  # cli.serve が bind 失敗（別の常駐が先に取った）で返す exit code。これだけは待ってよい
 
 
 def daemon_disabled() -> bool:
@@ -163,8 +167,10 @@ def ensure_daemon(
 ) -> bool:
     """居なければ起こして待つ。待ち切れなければ False（呼び手は単発経路へ倒す）.
 
-    起こした子が先に終わった（モデル未取得で exit 5・ポート使用中 等）ときは、90 秒待たずに
-    すぐ False を返す（2 巡目の観察 4: 以前は子の終了を見ず上限まで待っていた）。
+    起こした子が終わったら、待ってよい理由は **exit 6（ポート使用中＝別のセッションが同時に
+    起こした常駐が bind 済みで、まだモデルを読んでいる）** だけ。それ以外の終了（exit 5 モデル
+    未取得・DSN 未設定・ループバック違反 等）は 90 秒待たずにすぐ False を返す
+    （2 巡目の観察 4 と追加レビューの観察 A: 許可リストにして想定外の失敗は早く落とす）。
     """
     if probe(port) is not None:
         return True
@@ -175,8 +181,9 @@ def ensure_daemon(
         if probe(port) is not None:
             return True
         poll = getattr(proc, "poll", None)
-        if callable(poll) and poll() is not None:
-            return False  # 子が終了＝起動失敗。理由は ~/.dbr/serve.log
+        rc = poll() if callable(poll) else None
+        if rc is not None and rc != EXIT_PORT_IN_USE:
+            return False  # 起動失敗。理由は ~/.dbr/serve.log
     return False
 
 

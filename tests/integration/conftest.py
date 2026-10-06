@@ -51,3 +51,12 @@ def count_rows(dsn: str, table: str) -> int:
         row = cur.fetchone()
     assert row is not None
     return int(str(row["n"]))
+
+
+@pytest.fixture(autouse=True)
+def _serve_log_to_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """serve のログを実運用の ~/.dbr/serve.log に書かない（追加レビューの観察 B）."""
+    import dbr.features.serve as serve_mod
+
+    monkeypatch.setattr(serve_mod, "STATE_DIR", tmp_path / ".dbr")
+    monkeypatch.setattr(serve_mod, "LOG_PATH", tmp_path / ".dbr" / "serve.log")

@@ -383,6 +383,16 @@ def serve(
     ) as exc:  # 起動時のモデル読み込み失敗も単発 ask と同じ exit 5
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=5) from None
+    except OSError as exc:
+        # bind 失敗（別の常駐が先に取った）は exit 6。client.ensure_daemon はこの番号だけ待ち続ける
+        import errno
+
+        if exc.errno == errno.EADDRINUSE or getattr(exc, "winerror", None) == 10048:
+            typer.echo(
+                f"{p} 番は使用中です（別の常駐が起動中か動いています）", err=True
+            )
+            raise typer.Exit(code=6) from None
+        raise
 
 
 @app.command()

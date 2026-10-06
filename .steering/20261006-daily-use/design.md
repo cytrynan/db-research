@@ -129,7 +129,7 @@ def run_sync(dsn: str, embedder: Embedder, *, bundles: Sequence[str] | None = No
   - 埋め込み器は名前ごとに 1 個保持（辞書キャッシュ）。`LocalE5.encode` は `threading.Lock` で直列化（CPU 推論の安全側）。
   - sync スレッド: 起動直後に 1 回、以後 `--sync-interval` 分（既定 30・0 で無効）ごと。`run_sync` の例外はログに出してスレッドは続ける。
   - ログ: `~/.dbr/serve.log`（件数・時刻のみ。本文は書かない）。
-- クライアント（`client.py`）: `health(port, timeout=0.3)`, `ask_remote(question, opts, port)`, `ensure_daemon(port, *, start_timeout=90.0) -> bool`。`ensure_daemon` は health 不応答なら `subprocess.Popen([sys.executable, "-m", "dbr.cli", "serve", "--port", ...], creationflags=DETACHED_PROCESS|CREATE_NEW_PROCESS_GROUP, stdin=DEVNULL, stdout/stderr=serve.log)` で起こし、health が ok になるまで 0.5 秒間隔で待つ。
+- クライアント（`client.py`）: `health(port, timeout=2.0)`（当初 0.3。起動直後の同期中に切断したので受入検証の回収で 2 秒に）, `ask_remote(question, opts, port)`, `ensure_daemon(port, *, start_timeout=90.0) -> bool`。`ensure_daemon` は health 不応答なら `subprocess.Popen([sys.executable, "-m", "dbr.cli", "serve", "--port", ...], creationflags=DETACHED_PROCESS|CREATE_NEW_PROCESS_GROUP, stdin=DEVNULL, stdout/stderr=serve.log)` で起こし、health が ok になるまで 0.5 秒間隔で待つ。
 - `dbr ask` の経路選択: `--no-daemon` or `DBR_NO_DAEMON=1` → 単発。それ以外は health → 無ければ ensure_daemon → ask_remote。起動に失敗したら WARN を stderr に出して単発へフォールバック（止めない）。
 - `dbr serve [--port] [--sync-interval 30] [--stop]`、`dbr sync [--bundle ...] [--json]`。
 

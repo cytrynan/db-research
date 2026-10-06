@@ -13,15 +13,15 @@
   7. `20260930-overview-llm` — ④ にローカル LLM の回答層（Qwen2.5-1.5B・CPU）。**D-15: 配線したが既定は抽出型のまま**（K 採点 抽出型 5/5・LLM 4/3）
   8. `20260930-bundle-scope` — 質問の語から bundle を推定し ① と ④ の証拠を boost。**D-16: 既定 scope=boost w=1.0**（① 1.00/0.883）
   9. `20261006-daily-use` — **常用化**: 取り込みを 7 bundle に拡大（`dbr sync`・D-19）、不明 → 探し物のフォールバック（D-17）、常駐 `dbr serve` と HF オフライン既定（D-18）、エージェントの入口 `dbr mcp`。計算本体を `features/ask` に抽出し CLI・常駐・MCP が同じ関数を呼ぶ
-- **確定した測定値**: `docs/bench-results.md`（v4〜v11）。① find 10 問は **embed_ctx＋rrf_top3＋boost で recall@5 1.00 / MRR 0.883**（v10＝v11。取り込みを 145→269 文書に広げても不変。**in-sample**＝語彙は質問を見ながら作った）。② count 4/4 stable。③ asof 4/4。④ overview は K 採点済み（抽出型 5/5・LLM 4/3＝抽出型で足りる。LLM 層は保留）。
-- **応答時間（2026-10-06・常駐あり・5 回連続）**: count 0.87〜1.08 秒 / find 0.94〜1.03 / asof 1.02〜1.11 / overview 1.05〜1.25（うち `uv run`＋Python 起動が約 0.9 秒）。初回の自動起動込み 24.5 秒。常駐なしは 20〜29 秒。
-- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）: 7 bundle・269 文書・2,834 断片・埋め込み plain/ctx 5,668・fact 546・summary 3,110。`experiments` の 6 ファイルはフロントマターの YAML 不正で未取り込み（WARN。一覧は `.steering/20261006-daily-use/tasklist.md` 振り返り）。テストは別 DB `dbr_test`（同期係の `dbr_test_sync` も残っている・消してよい）。
+- **確定した測定値**: `docs/bench-results.md`（v4〜v11c）。① find 10 問は **embed_ctx＋rrf_top3＋boost で recall@5 1.00 / MRR 0.883**（v10＝v11。取り込みを 145→269 文書に広げても不変。**in-sample**＝語彙は質問を見ながら作った）。② count 4/4 stable。③ asof 4/4。④ overview は K 採点済み（抽出型 5/5・LLM 4/3＝抽出型で足りる。LLM 層は保留）。
+- **応答時間（2026-10-06・常駐あり・温まった状態）**: count 0.46〜0.51 秒 × 5 / find 0.56〜0.58 / asof 0.59〜0.62 / overview 0.67〜0.71（CLI の起動を軽くした後。常駐なしは 20〜29 秒・初回の自動起動込み 23〜27 秒）。**ただし同期直後の最初の数回は 2 秒台**（原因未特定・R3 の「1 秒以内 × 5 回」をその間は外す＝K 判断待ち）。生データは `.steering/20261006-daily-use/tasklist.md`
+- **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）: 7 bundle・276 文書・2,918 断片・埋め込み plain/ctx 5,836・fact 565・summary 3,201（2026-10-06・受入検証の回収後）。正本の `.md` 件数と全 bundle で一致（16/59/77/15/4/23/82・private.md 0）。experiments の 6 ファイルは正本側の YAML を直して取り込み済み
 - **訂正済みの誤記**: v6 で「INDEX と work.md の日付不整合」と書いたのは timestamptz の UTC 表示の誤読。実データの「発見」は原本を grep してから書く。
 
 ## 次にやること（推奨順）
 1. **K の作業 1 つ**: Claude Code に MCP を登録する（`claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`・README 参照）。登録後、くろこのセッションで `ask` ツールが見えることを確認
 2. **質問セットの拡張（K 判断）**: 20 問はすべて references 向け。**使い始めて「推定で探した質問」（`kind_fallback: true`）と外れた質問を held-out として溜め**、dev / memory / stock / tax 向けの find・overview を各 5 問ほど足す。語彙（LEXICON）の手直しはその後
-3. **experiments の 6 ファイルのフロントマター修正**（正本側・`~/.agents/knowledge/experiments`）→ 直せば次の sync で入る
+3. **R3 の判断（K）**: 温まった状態では count 0.5 秒だが、同期直後の最初の数回が 2 秒台（原因未特定。候補: 常駐プロセスの CPU 競合・autovacuum・ファイルキャッシュ）。基準を「温まった状態で」に直すか、原因を潰す単位を切るか
 4. ④ の LLM 層の再採点（K 次第）／`valid_to` の自動推定（誤閉じ率を測ってから）／Windows タスクスケジューラでの常駐自動起動（要るなら）
 
 ## 再開の手順
