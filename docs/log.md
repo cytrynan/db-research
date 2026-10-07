@@ -10,6 +10,9 @@
 * **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
 -->
 
+## 2026-10-08
+* **Update**: [機能設計書](functional-design.md)・[アーキテクチャ設計書](architecture.md) — 認証情報の置き場を「環境変数のみ」から「環境変数か、リポ直下 `.env`（DSN は `--dsn` → `DBR_DSN` → `.env` の順）」に訂正（MCP が全ツール失敗した件の修正 `.steering/20261008-mcp-dsn-fallback` に追随） (kuroko/claude-opus-5-5)
+
 ## 2026-10-06
 * **Update**: [アーキテクチャ設計書](architecture.md)・[決定台帳](decisions.md) — 応答時間の実測を受入検証の回収後の値に追随（count 0.46〜0.51 秒 × 5・同期直後の数回は 2 秒台で原因未特定）。評価係の指摘①「回収後に旧値のまま commit した」の回収 (kuroko/claude-fable-5-1)
 * **Update**: [測定結果](bench-results.md) — v11c: commit `ede32a0`（dirty なし）で find / count / asof を再測定し v11b と一致（「-dirty の JSON は確定版で測り直す」の実施） (kuroko/claude-fable-5-1)

@@ -69,3 +69,23 @@ def test_tool_health_raises_when_daemon_cannot_start(
     monkeypatch.setattr(m, "ensure_daemon", lambda _p: False)
     with pytest.raises(RuntimeError, match="起こせません"):
         m.tool_health()
+
+
+@pytest.mark.parametrize(
+    ("tool", "args", "expected"),
+    [
+        ("health", {}, "起こせません"),  # RuntimeError
+        ("ask", {"question": "x", "kind": "bogus"}, "kind は"),  # ValueError
+    ],
+)
+def test_server_surfaces_anticipated_errors_to_client(
+    monkeypatch: pytest.MonkeyPatch, tool: str, args: dict[str, Any], expected: str
+) -> None:
+    """SDK 2.x は ToolError 以外を `Error executing tool <name>` だけに潰す（2026-10-07〜08 の症状）."""
+    from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
+
+    monkeypatch.setattr(m, "ensure_daemon", lambda _p: False)
+    srv = m.build_server()
+    with pytest.raises(ToolError, match=expected) as err:
+        asyncio.run(srv.call_tool(tool, args))
+    assert not isinstance(err.value, UnexpectedToolError)

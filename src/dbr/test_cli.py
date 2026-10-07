@@ -42,8 +42,12 @@ def test_count_remote_dsn_exits_3() -> None:
     assert result.exit_code == 3
 
 
-def test_missing_dsn_is_an_error(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_missing_dsn_is_an_error(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    from dbr.shared.db import dsn
+
     monkeypatch.delenv("DBR_DSN", raising=False)
+    # 実リポの .env を読ませない
+    monkeypatch.setattr(dsn, "ENV_FILE", tmp_path / "no.env")
     result = runner.invoke(app, ["count", "v_by_bundle"])
     assert result.exit_code != 0
 

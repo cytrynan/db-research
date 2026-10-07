@@ -20,6 +20,7 @@ uv run dbr mcp                  # エージェントの入口（stdio MCP: ask /
 ```
 
 - **Claude Code への登録（K が 1 回・承認後）**: `claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`
+- DSN の解決順は `--dsn` → 環境変数 `DBR_DSN` → **リポ直下 `.env` の `DBR_DSN`**。MCP（Claude Code が env なしで起こす）とそこから起こす常駐は `.env` で接続する（2026-10-08 修正。以前は `.env` を読まず、常駐が消えると MCP の全ツールが `Error executing tool <name>` になった）
 - 常駐は起動直後と 30 分ごとに `sync` を走らせる（`dbr serve --sync-interval 0` で無効）。状態は `curl http://127.0.0.1:47821/health`、ログは `~/.dbr/serve.log`（件数と時刻だけ）
 - Hugging Face Hub への問い合わせは既定で切ってある（`HF_HUB_OFFLINE=1`）。モデル未取得のときだけ `DBR_HF_ONLINE=1` を付けて 1 回取得する
 - 正本フォルダの既定は `~/.claude/references`・`~/.claude/projects/C--Users-meer0/memory`・`~/.agents/knowledge/<bundle>`。環境変数 `DBR_ROOT_<BUNDLE>`（例 `DBR_ROOT_MEMORY`）で上書き

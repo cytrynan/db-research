@@ -492,7 +492,7 @@ migrations/
 - **ループバック強制**: `assert_loopback(dsn)` を `ingest`/`ask` の起動時に必ず通す。故障注入テストで `host=example.com` を渡して拒否を確認
 - **`private.md` 除外**: 走査で除外＋DB トリガーで二重に拒否
 - **外部 API への送信**: `Embedder` 実装が外部通信する場合、`bundle in {'references', 'memory'}` なら**拒否**（K の承認が出るまで）。承認後は設定ファイルの明示フラグで解除
-- 認証情報は環境変数のみ（`.env` は gitignore）
+- 認証情報は環境変数か、リポ直下の `.env`（gitignore）。DSN の解決順は `--dsn` → 環境変数 `DBR_DSN` → `.env` の `DBR_DSN`（`.env` から読むのはこのキーだけ。MCP が env なしで起こす常駐もこれで接続できる・2026-10-08）
 
 ## エラーハンドリング
 

@@ -29,7 +29,10 @@ for _stream in (sys.stdout, sys.stderr):
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 
 DsnOpt = Annotated[
-    str | None, typer.Option("--dsn", help="接続文字列。省略時は環境変数 DBR_DSN")
+    str | None,
+    typer.Option(
+        "--dsn", help="接続文字列。省略時は環境変数 DBR_DSN → リポ直下 .env の DBR_DSN"
+    ),
 ]
 JsonOpt = Annotated[bool, typer.Option("--json", help="JSON だけを出力")]
 

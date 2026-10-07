@@ -9,6 +9,8 @@ Claude Code のセッションごとに 1 プロセス起きるので、torch �
 
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
 from typing import Any
 
 from dbr.features.ask import ASK_KINDS, AskError, AskOptions
@@ -81,15 +83,33 @@ def tool_health() -> dict[str, Any]:
     return data if data is not None else {"status": "unreachable"}
 
 
+def _anticipated(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
+    """想定内の失敗（ValueError / RuntimeError）を ToolError に包み直してメッセージを届ける.
+
+    SDK 2.x は ToolError 以外をクラッシュ扱いにし、クライアントへは `Error executing tool <name>`
+    だけを返す。2026-10-07〜08 は「常駐を起こせない」の文言が届かず原因の切り分けが遅れた。
+    """
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        try:
+            return fn(*args, **kwargs)
+        except (ValueError, RuntimeError) as exc:
+            raise ToolError(str(exc)) from exc
+
+    return wrapper
+
+
 def build_server() -> Any:
     """MCPServer（SDK 2.x。1.x の FastMCP）を組み立てる。テストはツール関数を直接呼ぶ."""
     from mcp.server.mcpserver import MCPServer
 
     mcp = MCPServer(SERVER_NAME)
-    mcp.tool(name="ask")(tool_ask)
-    mcp.tool(name="count")(tool_count)
-    mcp.tool(name="sync")(tool_sync)
-    mcp.tool(name="health")(tool_health)
+    mcp.tool(name="ask")(_anticipated(tool_ask))
+    mcp.tool(name="count")(_anticipated(tool_count))
+    mcp.tool(name="sync")(_anticipated(tool_sync))
+    mcp.tool(name="health")(_anticipated(tool_health))
     return mcp
 
 

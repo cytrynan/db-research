@@ -143,7 +143,7 @@ status: draft
 - **接続はループバックのみ**: `shared/db` の接続関数が DSN を解析し、host が `localhost` / `127.0.0.1` / `::1` 以外なら例外。テストで故障注入
 - **外部送信の遮断**: `Embedder` の外部実装は `bundle in {references, memory}` を拒否（K 承認後は設定ファイルの明示フラグ `allow_external_for_personal: true` でのみ解除）
 - **`private.md`**: 走査除外＋DB トリガー拒否の二重
-- **機密情報管理**: 接続文字列・API キーは環境変数（`.env` は gitignore）。ドキュメント・ログに書かない
+- **機密情報管理**: 接続文字列・API キーは環境変数か、リポ直下の `.env`（gitignore。DSN は環境変数が無い時だけここから読む＝`resolve_dsn`）。ドキュメント・ログに書かない
 
 ### 入力検証
 - CLI 引数はパス存在・バンドル名の語彙・`--kind` の値域を typer で検証
