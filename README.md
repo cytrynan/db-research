@@ -22,7 +22,7 @@ uv run dbr mcp                  # エージェントの入口（stdio MCP: ask /
 - **Claude Code への登録（K が 1 回・承認後）**: `claude mcp add --scope user dbr -- uv run --project C:\Users\meer0\dev\db-research dbr mcp`
 - DSN の解決順は `--dsn` → 環境変数 `DBR_DSN` → **リポ直下 `.env` の `DBR_DSN`**。MCP（Claude Code が env なしで起こす）とそこから起こす常駐は `.env` で接続する（2026-10-08 修正。以前は `.env` を読まず、常駐が消えると MCP の全ツールが `Error executing tool <name>` になった）
 - 常駐は起動直後と 30 分ごとに `sync` を走らせる（`dbr serve --sync-interval 0` で無効）。状態は `curl http://127.0.0.1:47821/health`（`db_unreachable` が true なら DB に届いていない）、運用ログは `~/.dbr/serve.log`（件数と時刻だけ）
-- **利用ログ** `~/.dbr/usage.jsonl`（1 要求 1 行: 呼び出し元・質問文・型・上位ヒット・応答時間・結果。D-20）。集計は `uv run dbr usage --days 7`（呼び出し元×結果・フォールバック率・p50/p90・0 件だった質問・エラー）。同期が 2 回続けて DB に届かない（または ask が接続段で失敗する）と `~/.dbr/DB-UNREACHABLE.flag` が立ち、Claude Code のセッション開始時に警告が出る（復旧: `docker start dbr_pg`。同期が成功すると自動で消える）
+- **利用ログ** `~/.dbr/usage.jsonl`（1 要求 1 行: 呼び出し元・質問文・型・上位ヒット・応答時間・結果。D-20）。集計は `uv run dbr usage --days 7`（呼び出し元×結果・フォールバック率・p50/p90・0 件だった質問・エラー）。同期が 2 回続けて DB に届かない（または ask が接続段で失敗する）と `~/.dbr/DB-UNREACHABLE.flag` が立ち、Claude Code のセッション開始時に警告が出る（常駐が `docker restart/start` で**自動復旧**を試みる＝D-21。手で `docker stop` した時は触らないので `docker start dbr_pg` を手で。同期が成功するとフラグは自動で消える。自動復旧を止めるなら `dbr serve --no-auto-recover`）
 - Hugging Face Hub への問い合わせは既定で切ってある（`HF_HUB_OFFLINE=1`）。モデル未取得のときだけ `DBR_HF_ONLINE=1` を付けて 1 回取得する
 - 正本フォルダの既定は `~/.claude/references`・`~/.claude/projects/C--Users-meer0/memory`・`~/.agents/knowledge/<bundle>`。環境変数 `DBR_ROOT_<BUNDLE>`（例 `DBR_ROOT_MEMORY`）で上書き
 

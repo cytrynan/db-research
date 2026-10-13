@@ -394,6 +394,13 @@ def serve(
     stop: Annotated[
         bool, typer.Option("--stop", help="動いている常駐を止める")
     ] = False,
+    no_auto_recover: Annotated[
+        bool,
+        typer.Option(
+            "--no-auto-recover",
+            help="DB に届かない時の自動復旧（docker restart/start）をしない（DBR_NO_AUTO_RECOVER=1 と同じ・D-21）",
+        ),
+    ] = False,
     dsn: DsnOpt = None,
 ) -> None:
     """常駐サーバー（127.0.0.1 のみ）。埋め込みモデルを 1 回読み、ask / sync に答える（D-18）."""
@@ -422,7 +429,12 @@ def serve(
     from dbr.shared.embed import EmbedderUnavailable
 
     try:
-        run_serve(p, resolved, sync_interval_min=sync_interval)
+        run_serve(
+            p,
+            resolved,
+            sync_interval_min=sync_interval,
+            auto_recover=not no_auto_recover,
+        )
     except (
         EmbedderUnavailable
     ) as exc:  # 起動時のモデル読み込み失敗も単発 ask と同じ exit 5

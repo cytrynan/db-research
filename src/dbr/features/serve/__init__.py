@@ -11,7 +11,9 @@ JSON を投げる薄いクライアントになる（D-18）。
 - 同期（features/sync）は起動直後に 1 回、以後 `sync_interval_min` 分ごとに別スレッドで走る
 - 運用ログは `~/.dbr/serve.log`（経路名・件数・時刻だけ）。**利用ログ**は `~/.dbr/usage.jsonl`
   （1 要求 1 行: 呼び出し元・質問文・型・上位ヒット・応答時間・結果。断片本文は書かない。D-20）
-- DB に届かない状態は `~/.dbr/DB-UNREACHABLE.flag` で外に出す（同期の DB 接続失敗 2 回連続 or ask の
+- DB に届かない状態は `~/.dbr/DB-UNREACHABLE.flag` で外に出し、**自動復旧**（features/serve/recovery・
+  docker restart/unpause/start。手で止めた exit 0 は触らない・10 分に 1 回・D-21）を別スレッドで試みる。
+  フラグ自体は `~/.dbr/DB-UNREACHABLE.flag` で外に出す（同期の DB 接続失敗 2 回連続 or ask の
   接続失敗で書き、同期成功で消す。SessionStart フックが拾う）。2026-10-08〜13 に DB が
   「稼働中なのに応答しない」まま 3 日気づかれなかった（同期エラーは serve.log に 20 行あった）
 """
@@ -33,6 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from dbr.features.ask import AskError, AskOptions, answer
+from dbr.features.serve.recovery import ENV_NO_AUTO_RECOVER, Recoverer
 from dbr.features.serve.usage import log_request, normalize_client
 from dbr.shared.embed import DEFAULT_MODEL, Embedder, get_embedder
 from dbr.shared.llm import get_llm
@@ -75,23 +78,40 @@ def _log_line(message: str) -> None:
         pass
 
 
+# フラグの書く・追記・消すは 1 つのロックで排他する（追記の exists → open("a") の間に同期が消すと
+# 復活してしまう競合。受入検証 2026-10-13 P3）
+_flag_lock = threading.Lock()
+
+
 def _write_flag(reason: str) -> None:
     """DB に届かない状態を外に出す。SessionStart フック（check-regression-flags.py）が拾う."""
     try:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
-        FLAG_PATH.write_text(
-            f"dbr の DB（dbr_pg）に接続できません ({datetime.now(UTC).isoformat(timespec='seconds')})\n"
-            f"最後のエラー: {reason[:200]}\n"
-            "確認: docker ps -a --filter name=dbr_pg / 復旧: docker start dbr_pg → "
-            "curl http://127.0.0.1:47821/health（同期が成功するとこのフラグは自動で消える）\n",
-            encoding="utf-8",
-        )
+        with _flag_lock:
+            FLAG_PATH.write_text(
+                f"dbr の DB（dbr_pg）に接続できません ({datetime.now(UTC).isoformat(timespec='seconds')})\n"
+                f"最後のエラー: {reason[:200]}\n"
+                "確認: docker ps -a --filter name=dbr_pg / 復旧: docker start dbr_pg → "
+                "curl http://127.0.0.1:47821/health（同期が成功するとこのフラグは自動で消える）\n",
+                encoding="utf-8",
+            )
     except OSError:
         pass
 
 
+def _append_flag(line: str) -> None:
+    """復旧の試行結果をフラグ本文の末尾に足す（フラグが無ければ何もしない＝作らない）."""
+    try:
+        # "r+" は無いファイルを作らない（"a" は作ってしまう）
+        with _flag_lock, FLAG_PATH.open("r+", encoding="utf-8") as f:
+            f.seek(0, os.SEEK_END)
+            f.write(line.rstrip() + "\n")
+    except OSError:  # 無い（FileNotFoundError を含む）・書けない
+        pass
+
+
 def _clear_flag() -> None:
-    with contextlib.suppress(OSError):
+    with _flag_lock, contextlib.suppress(OSError):
         FLAG_PATH.unlink(missing_ok=True)
 
 
@@ -146,6 +166,10 @@ class Resources:
     last_sync: dict[str, Any] | None = None
     sync_running: bool = False
     consecutive_sync_failures: int = 0
+    # 自動復旧（D-21）。None なら検知だけ。recover_in_thread=False はテスト用（同期的に走らせる）
+    recoverer: Recoverer | None = None
+    recover_in_thread: bool = True
+    last_recovery: dict[str, Any] | None = None
     _cache: dict[tuple[str, str], Any] = field(default_factory=dict)
     _load_lock: threading.Lock = field(default_factory=threading.Lock)
     _sync_lock: threading.Lock = field(default_factory=threading.Lock)
@@ -216,9 +240,49 @@ class Resources:
             self._sync_lock.release()
 
     def mark_db_unreachable(self, reason: str) -> None:
-        """フラグを書く。同期の DB 接続失敗 2 回連続のほか、/ask の接続段の失敗（利用者がいま困っている）でも即書く."""
+        """フラグを書き、自動復旧を起こす（別スレッド・J4）.
+
+        同期の DB 接続失敗 2 回連続のほか、/ask の接続段の失敗（利用者がいま困っている）でも即。
+        """
         _log_line("db unreachable flag")
         _write_flag(reason)
+        if self.recoverer is None:
+            return
+        if self.recover_in_thread:
+            threading.Thread(
+                target=self._recover, args=(reason,), daemon=True, name="dbr-recover"
+            ).start()
+        else:
+            self._recover(reason)
+
+    def _recover(self, reason: str) -> None:
+        """復旧を 1 回試み、結果を serve.log・フラグ本文・/health に残す.
+
+        成功したら同期を 1 回走らせる（同期が成功すればフラグは既存経路で消える・J5）。
+        """
+        assert self.recoverer is not None
+        try:
+            result = self.recoverer.attempt(reason)
+        except (
+            Exception
+        ) as exc:  # attempt は自前で握るが、スレッドを黙って死なせない保険
+            _log_line(f"recovery crashed {type(exc).__name__}")
+            return
+        self.last_recovery = result.to_dict()
+        _log_line(f"recovery {result.status} action={result.action}")
+        _append_flag(
+            f"自動復旧 {result.at}: {result.action} → {result.status}（{result.detail}）"
+        )
+        # DB に届いたと確認できた 2 経路（打って届いた／打つ前から届いていた）は同期へ合流し、
+        # 成功でフラグを消す（2 巡目の必須 2: skipped_healthy だけフラグが残っていた）
+        if result.status not in ("recovered", "skipped_healthy"):
+            return
+        try:
+            self.run_sync()  # wait=False: 走行中なら飛ばす（次の周期で消える）
+        except SyncBusy:
+            pass
+        except Exception:  # run_sync 側で last_sync.error に記録済み
+            pass
 
     @staticmethod
     def db_unreachable() -> bool:
@@ -235,7 +299,24 @@ class Resources:
             "sync_running": self.sync_running,
             "consecutive_sync_failures": self.consecutive_sync_failures,
             "db_unreachable": self.db_unreachable(),
+            "last_recovery": self.last_recovery,
+            "auto_recover": self.recoverer is not None and self.recoverer.enabled,
         }
+
+
+def db_probe(dsn: str) -> bool:
+    """DB に接続して SELECT 1 が返るか（自動復旧の成功判定・J5）.
+
+    接続は 3 秒で諦める。接続後に SELECT が固まる場合は Recoverer 側（_TimedProbe）が打ち切る。
+    """
+    from dbr.shared.db import connect
+
+    try:
+        with connect(dsn, connect_timeout=3) as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            return cur.fetchone() is not None
+    except Exception:  # 接続段・認証・停止中はすべて「まだ」
+        return False
 
 
 def _default_sync_runner(dsn: str, embedder: Embedder) -> Mapping[str, Any]:
@@ -443,15 +524,19 @@ def serve(
     dsn: str,
     *,
     sync_interval_min: int = DEFAULT_SYNC_INTERVAL_MIN,
+    auto_recover: bool = True,
     resources: Resources | None = None,
     ready: threading.Event | None = None,
 ) -> int:
     """常駐の本体。shutdown まで返らない。戻り値は実際に bind したポート."""
     res = resources or Resources(dsn=dsn)
+    if res.recoverer is None and auto_recover:
+        res.recoverer = Recoverer(lambda: db_probe(res.dsn))
     server = make_server(port, res)
     stop = threading.Event()
     _log_line(
-        f"start pid={os.getpid()} port={server.port} sync_interval={sync_interval_min}"
+        f"start pid={os.getpid()} port={server.port} sync_interval={sync_interval_min} "
+        f"auto_recover={res.recoverer is not None and res.recoverer.enabled}"
     )
     try:
         # モデルは起動時に読んでおく（最初の質問を待たせない）
@@ -476,6 +561,7 @@ def serve(
 __all__ = [
     "DEFAULT_PORT",
     "DEFAULT_SYNC_INTERVAL_MIN",
+    "ENV_NO_AUTO_RECOVER",
     "ENV_NO_DAEMON",
     "ENV_PORT",
     "FLAG_PATH",

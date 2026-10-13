@@ -19,10 +19,19 @@ __all__ = [
 ]
 
 
-def connect(dsn: str) -> psycopg.Connection[dict[str, object]]:
-    """ループバック検査を通してから接続する（検査は接続前・環境変数の影響を遮断）."""
+def connect(
+    dsn: str, *, connect_timeout: int | None = None
+) -> psycopg.Connection[dict[str, object]]:
+    """ループバック検査を通してから接続する（検査は接続前・環境変数の影響を遮断）.
+
+    connect_timeout（秒）は DSN の値を上書きする。自動復旧の生存確認（短く待ちたい）が使う。
+    """
     # psycopg（約 0.3 秒）は接続する時に初めて読む。CLI の起動（常駐経由の ask）を軽く保つため
     import psycopg
     from psycopg.rows import dict_row
 
-    return psycopg.connect(effective_conninfo(dsn), row_factory=dict_row)
+    if connect_timeout is None:
+        return psycopg.connect(effective_conninfo(dsn), row_factory=dict_row)
+    return psycopg.connect(
+        effective_conninfo(dsn), row_factory=dict_row, connect_timeout=connect_timeout
+    )

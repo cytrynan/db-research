@@ -71,7 +71,7 @@ status: draft
 
 - 常駐は **1 台に 1 プロセス**（既定ポート 47821・`DBR_PORT`）。二重起動は bind 失敗で止まる（`allow_reuse_address=False`）
 - 状態はプロセス内だけ（モデルのキャッシュ・最後の同期・連続失敗回数）。再起動で消えてよい。ディスクに書くのは `~/.dbr/` の 3 つ: `serve.log`（運用ログ: 経路名・件数・時刻のみ）・`usage.jsonl`（利用ログ: 質問文・型・上位ヒット・応答時間・結果。断片本文なし。改善の材料＝D-20）・`DB-UNREACHABLE.flag`（DB に届かない状態の外部通知。SessionStart フックが拾う）。いずれもリポ外・restic の対象外（正本 `references/` と同じローカル境界）
-- DB コンテナ `dbr_pg` は `restart: unless-stopped`（exit で止まったら起こす。手で stop した時は起こさない）。「稼働中なのに応答しない」は restart では救えないので、フラグで検知する（自動復旧は未実装＝別単位）
+- DB コンテナ `dbr_pg` は `restart: unless-stopped`（exit で止まったら起こす。手で stop した時は起こさない）。「稼働中なのに応答しない」は restart では救えないので、フラグで検知し、**常駐が `docker restart/unpause/start` を打って復旧する**（D-21。手で止めた exit 0 は触らない・10 分に 1 回・成功判定は `SELECT 1`）
 - 自動起動は `python -m dbr.cli serve`（uv の仮想環境の python）を `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` で切り離す（Windows）。CLI が終わっても生き残り、ログオフで終わる。常用の自動起動（Windows タスクスケジューラ）は未登録＝要るなら別単位
 - 外部通信は無し: モデルはキャッシュ（`~/.cache/huggingface`）から読み、`HF_HUB_OFFLINE=1` を既定にする。モデル未取得のときだけ `DBR_HF_ONLINE=1` で 1 回取得
 

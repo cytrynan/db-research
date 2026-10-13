@@ -11,6 +11,8 @@
 -->
 
 ## 2026-10-13
+* **Update**: [決定台帳](decisions.md) — D-21（DB の自動復旧: docker restart/unpause/start・手動停止は触らない・10 分に 1 回）を追加 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md)・[アーキテクチャ設計書](architecture.md) — Serve 節と「状態の置き場」に自動復旧（recovery.py）の動作・成功判定・無効化を追記 (kuroko/claude-fable-5-1)
 * **Update**: [決定台帳](decisions.md) — D-20（利用ログ usage.jsonl に質問文と上位ヒット・DB-UNREACHABLE.flag・dbr_pg の restart）を追加 (kuroko/claude-fable-5-1)
 * **Update**: [機能設計書](functional-design.md) — Serve 節: ログを運用ログ serve.log と利用ログ usage.jsonl の 2 本に分け項目を定義、DB 停止の検知フラグと `/health` の 2 項目を追記 (kuroko/claude-fable-5-1)
 * **Update**: [アーキテクチャ設計書](architecture.md) — 「状態の置き場」に `~/.dbr/` の 3 ファイルと `restart: unless-stopped` の限界を追記 (kuroko/claude-fable-5-1)
