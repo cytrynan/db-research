@@ -1,4 +1,4 @@
-# RESUME — 次のセッションが最初に読むファイル（2026-10-08 更新）
+# RESUME — 次のセッションが最初に読むファイル（2026-10-13 更新）
 
 > 目的: 会話の文脈が切れても、ここと `docs/decisions.md`・`.steering/*/tasklist.md` だけで再開できるようにする。
 
@@ -14,6 +14,7 @@
   8. `20260930-bundle-scope` — 質問の語から bundle を推定し ① と ④ の証拠を boost。**D-16: 既定 scope=boost w=1.0**（① 1.00/0.883）
   9. `20261006-daily-use` — **常用化**: 取り込みを 7 bundle に拡大（`dbr sync`・D-19）、不明 → 探し物のフォールバック（D-17）、常駐 `dbr serve` と HF オフライン既定（D-18）、エージェントの入口 `dbr mcp`。計算本体を `features/ask` に抽出し CLI・常駐・MCP が同じ関数を呼ぶ
 - **修正 `20261008-mcp-dsn-fallback`（T1）**: 2026-10-07〜08 に MCP `dbr` の全ツールが `Error executing tool <name>` だけを返していた。原因＝`DBR_DSN` が `.env` にしか無く読む経路が無かった（10-06 に DSN を export したシェルから起こした常駐が消えた後、MCP からの自動起動が毎回 DSN 無しで即死）。`resolve_dsn` に「リポ直下 `.env` の `DBR_DSN`」を最後の解決先として追加し、MCP は想定内の失敗を `ToolError` で返す（文言がクライアントに届く）。**常駐が消えた理由（10-07 02:15 UTC 以降・終了ログ無し）は未特定**。brief は `.steering/20261008-mcp-dsn-fallback/brief.md`
+- **改善 `20261013-usage-log`（T2・D-20）**: 利用ログ `~/.dbr/usage.jsonl`（呼び出し元・質問文・型・上位ヒット・応答時間・結果）と `dbr usage` 集計、DB 停止の検知フラグ `~/.dbr/DB-UNREACHABLE.flag`（同期の DB 接続失敗 2 連続 or ask 接続失敗で書き、同期成功で消す。SessionStart フックが警告）、`dbr_pg` の `restart: unless-stopped`。発端: 2026-10-08〜13 に DB が「稼働中なのに応答しない」まま 3 日気づかれず、MCP の ask が全部 `ConnectionTimeout` だった。**未実装: DB の自動復旧**（常駐が `docker restart` を打つ＝故障注入つきで別単位）。brief は `.steering/20261013-usage-log/brief.md`
 - **確定した測定値**: `docs/bench-results.md`（v4〜v11c）。① find 10 問は **embed_ctx＋rrf_top3＋boost で recall@5 1.00 / MRR 0.883**（v10＝v11。取り込みを 145→269 文書に広げても不変。**in-sample**＝語彙は質問を見ながら作った）。② count 4/4 stable。③ asof 4/4。④ overview は K 採点済み（抽出型 5/5・LLM 4/3＝抽出型で足りる。LLM 層は保留）。
 - **応答時間（2026-10-06・常駐あり・温まった状態）**: count 0.46〜0.51 秒 × 5 / find 0.56〜0.58 / asof 0.59〜0.62 / overview 0.67〜0.71（CLI の起動を軽くした後。常駐なしは 20〜29 秒・初回の自動起動込み 23〜27 秒）。**ただし同期直後の最初の数回は 2 秒台**（原因未特定・R3 の「1 秒以内 × 5 回」をその間は外す＝K 判断待ち）。生データは `.steering/20261006-daily-use/tasklist.md`
 - **実データ DB `dbr`**（Docker `dbr_pg`・127.0.0.1:5432）: 7 bundle・276 文書・2,918 断片・埋め込み plain/ctx 5,836・fact 565・summary 3,201（2026-10-06・受入検証の回収後）。正本の `.md` 件数と全 bundle で一致（16/59/77/15/4/23/82・private.md 0）。experiments の 6 ファイルは正本側の YAML を直して取り込み済み

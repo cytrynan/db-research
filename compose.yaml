@@ -2,6 +2,9 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: dbr_pg
+    # 落ちたら起こす（2026-10-13 に exit 255 で止まったまま誰も気づかなかった）。手で stop した時は起こさない。
+    # 「稼働中なのに応答しない」は救えない＝常駐の DB-UNREACHABLE.flag で検知する（D-20）
+    restart: unless-stopped
     environment:
       POSTGRES_USER: dbr
       POSTGRES_PASSWORD: dbr

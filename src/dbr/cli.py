@@ -287,7 +287,7 @@ def ask(
     計算本体は features/ask。既定では常駐（dbr serve）に投げ、居なければ起こす（D-18）。
     --dsn を明示したときは常駐を使わない（常駐は自分の DSN で動いているため）。
     """
-    from dbr.features.ask import AskError, AskOptions, answer, format_text, stderr_notes
+    from dbr.features.ask import AskError, AskOptions, format_text, stderr_notes
     from dbr.features.serve.client import ask_remote, daemon_disabled, ensure_daemon
 
     opts = AskOptions(
@@ -309,7 +309,7 @@ def ask(
         if use_daemon:
             p = _port_or_exit(port)
             if ensure_daemon(p):
-                out = ask_remote(question, opts, port=p)
+                out = ask_remote(question, opts, port=p, client="cli")
             else:
                 typer.echo(
                     f"WARN: 常駐を {p} 番で起こせなかったので単発で計算します"
@@ -317,18 +317,7 @@ def ask(
                     err=True,
                 )
         if out is None:
-            from dbr.shared.embed import get_embedder
-            from dbr.shared.llm import get_llm
-            from dbr.shared.rerank import get_reranker
-
-            out = answer(
-                question,
-                opts,
-                dsn=resolve_dsn(dsn),
-                embedder_for=get_embedder,
-                reranker_for=get_reranker,
-                llm_for=get_llm,
-            )
+            out = _ask_local(question, opts, dsn)
     except AskError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=exc.code) from None
@@ -338,6 +327,59 @@ def ask(
         typer.echo(json.dumps(out, ensure_ascii=False, default=str))
         return
     typer.echo(format_text(out))
+
+
+def _ask_local(question: str, opts: Any, dsn: str | None) -> dict[str, Any]:
+    """単発経路（常駐を通らない）。常駐側のログに乗らないので、ここで利用ログを 1 行残す（client=cli-local）."""
+    import time
+
+    from dbr.features.ask import AskError, answer
+    from dbr.features.serve.usage import log_request
+    from dbr.shared.embed import get_embedder
+    from dbr.shared.llm import get_llm
+    from dbr.shared.rerank import get_reranker
+
+    t0 = time.monotonic()
+    try:
+        out = answer(
+            question,
+            opts,
+            dsn=resolve_dsn(dsn),
+            embedder_for=get_embedder,
+            reranker_for=get_reranker,
+            llm_for=get_llm,
+        )
+    except AskError as exc:
+        log_request(
+            client="cli-local",
+            question=question,
+            opts=opts.to_dict(),
+            status="error",
+            ms=(time.monotonic() - t0) * 1000.0,
+            code=exc.code,
+            error=str(exc),
+        )
+        raise
+    except Exception as exc:  # DB 接続失敗・ループバック違反等も 1 行残す（受入検証 2026-10-13 必須 1）
+        log_request(
+            client="cli-local",
+            question=question,
+            opts=opts.to_dict(),
+            status="error",
+            ms=(time.monotonic() - t0) * 1000.0,
+            code=1,
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        raise
+    log_request(
+        client="cli-local",
+        question=question,
+        opts=opts.to_dict(),
+        status="ok",
+        ms=(time.monotonic() - t0) * 1000.0,
+        out=out,
+    )
+    return out
 
 
 @app.command()
@@ -470,6 +512,29 @@ def mcp() -> None:
     from dbr.features.mcp_server import run_stdio
 
     run_stdio()
+
+
+@app.command()
+def usage(
+    days: Annotated[int, typer.Option("--days", help="直近 N 日（既定 7）")] = 7,
+    path: Annotated[
+        Path | None,
+        typer.Option("--path", help="usage.jsonl の場所（既定 ~/.dbr/usage.jsonl）"),
+    ] = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """利用ログを集計する: 呼び出し元×結果・フォールバック率・応答時間 p50/p90・0 件だった質問・エラー（D-20）."""
+    from dbr.features.serve.usage import format_summary, iter_records, summarize
+
+    try:
+        summary = summarize(iter_records(path), days=days)
+    except (ValueError, OverflowError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from None
+    if as_json:
+        typer.echo(json.dumps(summary, ensure_ascii=False, default=str))
+        return
+    typer.echo(format_summary(summary))
 
 
 @app.command()

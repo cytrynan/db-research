@@ -10,6 +10,7 @@ Claude Code のセッションごとに 1 プロセス起きるので、torch �
 from __future__ import annotations
 
 import functools
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -24,21 +25,34 @@ from dbr.features.serve.client import (
 from dbr.features.serve.client import (
     health as daemon_health,
 )
+from dbr.features.serve.usage import log_request
 
 SERVER_NAME = "dbr"
+CLIENT = "mcp"  # 利用ログの呼び出し元
 
 
 def _port() -> int:
     return port_from_env()
 
 
-def _ensure() -> int:
+def _ensure(question: str, opts: AskOptions) -> int:
+    """常駐を起こす。起こせなかった失敗は常駐側に記録されないので、ここで利用ログに残す."""
     port = _port()
+    t0 = time.monotonic()
     if not ensure_daemon(port):
-        raise RuntimeError(
+        msg = (
             f"常駐（dbr serve）を {port} 番で起こせませんでした。"
             "`dbr serve` を手で起動するか ~/.dbr/serve.log を確認してください"
         )
+        log_request(
+            client=CLIENT,
+            question=question,
+            opts=opts.to_dict(),
+            status="daemon_unavailable",
+            ms=(time.monotonic() - t0) * 1000.0,
+            error=msg,
+        )
+        raise RuntimeError(msg)
     return port
 
 
@@ -57,7 +71,7 @@ def tool_ask(
         raise ValueError("k は 1〜50")
     opts = AskOptions(kind=kind, at=at, k=k)
     try:
-        return ask_remote(question, opts, port=_ensure())
+        return ask_remote(question, opts, port=_ensure(question, opts), client=CLIENT)
     except AskError as exc:
         raise ValueError(f"[exit {exc.code}] {exc}") from exc
 
@@ -66,20 +80,21 @@ def tool_count(view: str) -> dict[str, Any]:
     """② 数える: 定義済みビュー（v_by_bundle / v_by_type / v_unverified / v_verified / v_stale）の結果."""
     if view not in VIEWS:
         raise ValueError(f"view は {', '.join(sorted(VIEWS))} のいずれか")
+    opts = AskOptions(kind="count")
     try:
-        return ask_remote(view, AskOptions(kind="count"), port=_ensure())
+        return ask_remote(view, opts, port=_ensure(view, opts), client=CLIENT)
     except AskError as exc:
         raise ValueError(f"[exit {exc.code}] {exc}") from exc
 
 
 def tool_sync() -> dict[str, Any]:
     """正本フォルダの変更・新規・削除を DB に反映する（取り込み → 埋め込み → fact → summary）."""
-    return sync_remote(_ensure())
+    return sync_remote(_ensure("(sync)", AskOptions()))
 
 
 def tool_health() -> dict[str, Any]:
-    """常駐の状態（読み込み済みモデル・最後の同期）。居なければ起こしてから返す."""
-    data = daemon_health(_ensure(), timeout=5.0)
+    """常駐の状態（読み込み済みモデル・最後の同期・DB に届くか）。居なければ起こしてから返す."""
+    data = daemon_health(_ensure("(health)", AskOptions()), timeout=5.0)
     return data if data is not None else {"status": "unreachable"}
 
 

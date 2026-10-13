@@ -378,7 +378,8 @@ def format_text(out) -> str        # stdout の文面（常駐経由でも単発
 - クライアント（`serve/client.py`）: `health`（**2 秒**で不応答＝居ない。起動直後の同期中は応答が遅れるので 0.3 秒では誤判定した＝2026-10-06 実測。閉じたポートへは Windows ではタイムアウトまで待つので、常駐が居ないときの `dbr serve` / `dbr sync` は 2 秒遅れる）・`ask_remote`・`ensure_daemon`（`python -m dbr.cli serve` を切り離して起こし health を待つ・既定 90 秒。起こした子が先に終わったら待たずに諦める）・`stop_daemon`
 - `POST /sync` は走行中の同期があれば**終わるのを待ってから**走る（409 を返さない）。定期スレッド側は重なった周期を飛ばす
 - `dbr ask` の経路: `--no-daemon` / `DBR_NO_DAEMON=1` / `--dsn` 明示 → 単発。それ以外は常駐（居なければ起こす。起こせなければ WARN を出して単発に倒す）
-- ログ `~/.dbr/serve.log` は経路名・件数・時刻だけ（質問文・本文は書かない）。認証は持たない（単一利用者の PC。ローカルプロセスは正本も直接読める）
+- ログは 2 本（D-20・2026-10-13）: **運用ログ** `~/.dbr/serve.log` は経路名・件数・時刻だけ。**利用ログ** `~/.dbr/usage.jsonl` は 1 要求 1 行の JSON（`client`＝mcp / cli / cli-local / bench / other の許可リスト・`question`・`kind_requested`→`kind`・`kind_fallback`・`k`・`mode`/`agg`/`scope`・`status`＝ok / error / daemon_unavailable・`code`・`error`・`ms`・`n_hits` と上位 `hits`（doc・heading 120 字・score。**断片本文は書かない**）。count は `view`/`n_rows`、asof は `n_facts`、overview は `n_summaries`）。書くのは `/ask` ハンドラ（CLI 経由・MCP 経由の全要求）＋ CLI 単発経路（`cli-local`）＋ MCP で常駐を起こせなかった時（`daemon_unavailable`）。集計は `dbr usage [--days N] [--json] [--path]`（client×status・フォールバック率・p50/p90・0 件だった質問・code 別エラー）。認証は持たない（単一利用者の PC。ローカルプロセスは正本も直接読める）
+- **DB 停止の検知** `~/.dbr/DB-UNREACHABLE.flag`: 同期が **DB の接続段（`psycopg.OperationalError`）で 2 回連続**失敗したら書く（取り込み拒否など DB 以外の同期失敗は数えない）（30 分間隔 → DB 死後 1 時間以内。1 回は一過性を許す）、`/ask` が `psycopg.OperationalError`（接続段）で落ちたら即書く、**同期が成功したら消す**（ask の成功では消さない）。`/health` に `consecutive_sync_failures` / `db_unreachable`。SessionStart フック `~/.claude/hooks/check-regression-flags.py` が拾って警告する。実測 2026-10-08〜13: DB が「稼働中なのに応答しない」まま 3 日気づかれなかった（serve.log に `sync error` 20 行）
 
 ### Sync（F9・同期）
 

@@ -23,8 +23,10 @@ def test_build_server_exposes_four_tools() -> None:
 def test_tool_ask_relays_to_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, Any] = {}
 
-    def fake_ask_remote(q: str, opts: AskOptions, *, port: int) -> dict[str, Any]:
-        seen.update({"q": q, "opts": opts, "port": port})
+    def fake_ask_remote(
+        q: str, opts: AskOptions, *, port: int, client: str
+    ) -> dict[str, Any]:
+        seen.update({"q": q, "opts": opts, "port": port, "client": client})
         return {"kind": "find", "hits": []}
 
     monkeypatch.setattr(m, "ensure_daemon", lambda _p: True)
@@ -33,6 +35,7 @@ def test_tool_ask_relays_to_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
     out = m.tool_ask("メガネの度数どこ？", kind="find", k=3)
     assert out == {"kind": "find", "hits": []}
     assert seen["q"] == "メガネの度数どこ？" and seen["port"] == 50123
+    assert seen["client"] == "mcp"  # 利用ログの呼び出し元
     assert seen["opts"] == AskOptions(kind="find", k=3)
 
 

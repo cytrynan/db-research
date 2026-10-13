@@ -95,9 +95,14 @@ def ask_remote(
     *,
     port: int = DEFAULT_PORT,
     timeout: float = ASK_TIMEOUT,
+    client: str = "other",
 ) -> dict[str, Any]:
+    """`client` は利用ログの呼び出し元（mcp / cli / cli-local / bench / other。常駐側で許可リストに落とす）."""
     status, data = _request(
-        port, "/ask", {"question": question, "opts": opts.to_dict()}, timeout
+        port,
+        "/ask",
+        {"question": question, "opts": opts.to_dict(), "client": client},
+        timeout,
     )
     if status != 200:
         raise AskError(

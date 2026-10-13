@@ -10,6 +10,11 @@
 * **Creation**: [プロダクト要求定義書](product-requirements.md) — 初版作成・ユーザー承認済み (claude/claude-sonnet-5)
 -->
 
+## 2026-10-13
+* **Update**: [決定台帳](decisions.md) — D-20（利用ログ usage.jsonl に質問文と上位ヒット・DB-UNREACHABLE.flag・dbr_pg の restart）を追加 (kuroko/claude-fable-5-1)
+* **Update**: [機能設計書](functional-design.md) — Serve 節: ログを運用ログ serve.log と利用ログ usage.jsonl の 2 本に分け項目を定義、DB 停止の検知フラグと `/health` の 2 項目を追記 (kuroko/claude-fable-5-1)
+* **Update**: [アーキテクチャ設計書](architecture.md) — 「状態の置き場」に `~/.dbr/` の 3 ファイルと `restart: unless-stopped` の限界を追記 (kuroko/claude-fable-5-1)
+
 ## 2026-10-08
 * **Update**: [機能設計書](functional-design.md)・[アーキテクチャ設計書](architecture.md) — 認証情報の置き場を「環境変数のみ」から「環境変数か、リポ直下 `.env`（DSN は `--dsn` → `DBR_DSN` → `.env` の順）」に訂正（MCP が全ツール失敗した件の修正 `.steering/20261008-mcp-dsn-fallback` に追随） (kuroko/claude-opus-5-5)
 
